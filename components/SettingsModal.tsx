@@ -271,7 +271,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-500 mb-1">网站标题</label>
-                    <input type="text" value={settings.ai.websiteTitle || ''} onChange={(e) => updateAI('websiteTitle', e.target.value)} placeholder="个人导航" className="w-full h-11 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <input type="text" value={settings.ai.websiteTitle || ''} onChange={(e) => updateAI('websiteTitle', e.target.value)} placeholder="F-Nav" className="w-full h-11 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                   </div>
                   <div className="space-y-4">
                     <div>
