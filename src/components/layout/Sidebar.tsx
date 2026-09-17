@@ -160,7 +160,7 @@ export function Sidebar({
               isCollapsed ? 'max-w-0 opacity-0 duration-150' : 'max-w-[200px] opacity-100 duration-300 delay-150'
             }`}
           >
-            {ai?.sidebarNavigationName || ai?.navigationName || '蜗牛导航'}
+            {ai?.sidebarNavigationName || ai?.navigationName || '导航'}
           </span>
           {isCollapsed && (
             <button onClick={() => setIsCollapsed(false)} className="hidden lg:flex absolute p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors" title="展开侧边栏">
