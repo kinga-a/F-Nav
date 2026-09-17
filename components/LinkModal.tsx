@@ -26,7 +26,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [pinned, setPinned] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [icon, setIcon] = useState('');
-  const [iconType, setIconType] = useState<IconSourceType>('google');
+  const [iconType, setIconType] = useState<IconSourceType>('xinac');
   const [isUploading, setIsUploading] = useState(false);
 
   const [customIconUrl, setCustomIconUrl] = useState('');
@@ -156,7 +156,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   // 当不支持上传时，将图标类型降级为默认
   useEffect(() => {
     if (!supportsUpload && (iconType === 'upload-edgeone' || iconType === 'upload-cloudflare')) {
-      setIconType('google');
+      setIconType('xinac');
       setIcon('');
     }
   }, [supportsUpload, iconType]);
@@ -216,7 +216,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         setPinnedOrder(initialData.pinnedOrder || 0);
 
         // 智能还原图标获取方式
-        let detectedType: IconSourceType = 'google';
+        let detectedType: IconSourceType = 'xinac';
         if (initialData.iconType) {
           if (initialData.iconType === 'upload') {
             detectedType = 'upload-edgeone';
@@ -278,7 +278,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         setPinned(false);
         setIsPrivate(false);
         setIcon('');
-        setIconType('google');
+        setIconType('xinac');
         setCustomIconUrl('');
         setEdgeoneBlobUrl('');
         setCloudflareR2Url('');
@@ -463,7 +463,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           iconUrl = `https://api.xinac.net/icon/?url=${encodeURIComponent(url)}`;
           break;
         default:
-          iconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+          iconUrl = `https://api.xinac.net/icon/?url=${encodeURIComponent(url)}`;
       }
 
       setIcon(iconUrl);
@@ -595,9 +595,9 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
                   }}
                   className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-base"
                 >
-                  <option value="google">Google Favicon API (默认)</option>
+                  <option value="google">Google Favicon API</option>
                   <option value="faviconextractor">Favicon Extractor</option>
-                  <option value="xinac">Xinac 图标 API</option>
+                  <option value="xinac">Xinac 图标 API (默认)</option>
                   <option value="customurl">自定义图片URL</option>
                   <option value="customapi">自定义API</option>
                   {supportsUpload && <option value="upload-edgeone">上传到 Edgeone Pages Blob</option>}
