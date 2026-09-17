@@ -35,6 +35,19 @@ export function LinkCard({
   isDraggable = true, authToken, isEditMode = false, onWeightChange,
 }: LinkCardProps) {
   const [imgError, setImgError] = useState(false);
+  // 图标加载失败时先降级尝试 Xinac API，仍失败才显示首字母
+  const [fallbackTried, setFallbackTried] = useState(false);
+  const xinacFallback = `https://api.xinac.net/icon/?url=${encodeURIComponent(link.url)}`;
+  const handleIconError = () => {
+    if (!fallbackTried && link.icon && !link.icon.includes('api.xinac.net/icon') && !link.icon.startsWith('/api/favicon')) {
+      setFallbackTried(true);
+    } else {
+      setImgError(true);
+    }
+  };
+  const iconSrc = imgError || !link.icon
+    ? null
+    : (fallbackTried ? xinacFallback : link.icon);
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isEditingWeight, setIsEditingWeight] = useState(false);
   const [weightValue, setWeightValue] = useState(link.weight?.toString() || '0');
@@ -54,7 +67,6 @@ export function LinkCard({
   };
 
   const isDetailedView = viewMode === 'detailed';
-  const iconSrc = link.icon && !imgError ? link.icon : null;
 
   // 同步生成颜色，无需 useEffect + Canvas
   const fallbackColor = generateColorFromText(link.title);
@@ -147,7 +159,7 @@ export function LinkCard({
       {/* 背景模糊图标 - 使用 CSS 颜色而非提取 */}
       <div className="icon-bg">
         {iconSrc ? (
-          <img src={iconSrc} alt="" loading="lazy" onError={() => setImgError(true)} />
+          <img src={iconSrc} alt="" loading="lazy" onError={handleIconError} />
         ) : (
           <span style={{ fontSize: '48px', fontWeight: 'bold', color: fallbackColor }}>
             {link.title.charAt(0).toUpperCase()}
@@ -209,7 +221,7 @@ export function LinkCard({
                 <div className="relative shrink-0">
                   <div className="flex items-center justify-center text-sm font-bold uppercase w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
                     style={{ color: fallbackColor }}>
-                    {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={() => setImgError(true)} /> : link.title.charAt(0).toUpperCase()}
+                    {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
                   </div>
                   {link.isPrivate && (
                     <span className="absolute top-0.5 right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
@@ -227,7 +239,7 @@ export function LinkCard({
               <div className="relative hidden md:flex shrink-0">
                 <div className="flex items-center justify-center text-sm font-bold uppercase w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
                   style={{ color: fallbackColor }}>
-                  {iconSrc ? <img src={iconSrc} alt="" className="w-10 h-10" loading="lazy" onError={() => setImgError(true)} /> : link.title.charAt(0).toUpperCase()}
+                  {iconSrc ? <img src={iconSrc} alt="" className="w-10 h-10" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
                 </div>
                 {link.isPrivate && (
                   <span className="absolute top-1 right-1 text-xs leading-none" title="私人书签">🔒</span>
@@ -250,7 +262,7 @@ export function LinkCard({
             <div className="relative shrink-0 mr-3">
               <div className="flex items-center justify-center text-sm font-bold uppercase w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
                 style={{ color: fallbackColor }}>
-                {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={() => setImgError(true)} /> : link.title.charAt(0).toUpperCase()}
+                {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
               </div>
               {link.isPrivate && (
                 <span className="absolute top-0.5 right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
