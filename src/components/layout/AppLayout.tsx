@@ -170,7 +170,7 @@ export function AppLayout() {
 
   useEffect(() => {
     if (aiConfig) {
-      document.title = aiConfig.websiteTitle || '个人导航';
+      document.title = aiConfig.websiteTitle || 'F-Nav';
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
       link.href = aiConfig.faviconUrl || '/favicon.ico';
