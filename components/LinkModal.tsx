@@ -8,7 +8,7 @@ import { STORAGE_KEYS } from '../src/constants';
 interface LinkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (link: Omit<LinkItem, 'id' | 'createdAt'>) => void;
+  onSave: (link: Omit<LinkItem, 'id' | 'createdAt'>, keepOpen?: boolean) => void;
   onDelete?: (id: string) => void;
   categories: Category[];
   initialData?: LinkItem;
@@ -349,7 +349,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       finalUrl = 'https://' + url;
     }
     
-    // 保存链接数据
+    // 保存链接数据（keepOpen: 批量模式下通知父组件保持弹窗打开）
     onSave({
       id: initialData?.id || '',
       title,
@@ -366,7 +366,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       edgeoneBlobUrl,
       cloudflareR2Url,
       isPrivate
-    });
+    }, batchMode);
 
     if (!batchMode) {
       toast.success(initialData ? `「${title}」已更新` : `「${title}」已添加`);
