@@ -1,7 +1,7 @@
 # F个人导航 (F－Nav)
 
 > [!WARNING]
-> **本项目基于https://github.com/eallion/favorite项目ai修改**
+> **本项目基于蜗牛个人导航（https://github.com/eallion/favorite）项目ai修改，添加了分类加密与私人书签功能**
 
 > [!NOTE]
 > **基于 EdgeOne Pages 开发。对 Cloudflare Pages 和 Vercel 只进行过简单地测试。**
