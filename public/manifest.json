@@ -1,6 +1,6 @@
 {
-  "name": "个人导航",
-  "short_name": "个人导航",
+  "name": "F-Nav",
+  "short_name": "F-Nav",
   "description": "一个现代化的云端导航页面",
   "start_url": "/",
   "display": "standalone",
