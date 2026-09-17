@@ -1,7 +1,7 @@
 # F个人导航 (F－Nav)
 
 > [!WARNING]
-> **本项目完全基于 AI 构建，我对项目中的代码一无所知。如果有 Bug 和功能需求请 Fork 后自行处理。**
+> **本项目基于https://github.com/eallion/favorite项目ai修改**
 
 > [!NOTE]
 > **基于 EdgeOne Pages 开发。对 Cloudflare Pages 和 Vercel 只进行过简单地测试。**
