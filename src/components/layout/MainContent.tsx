@@ -126,7 +126,20 @@ export function MainContent({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(event) => {
+        // 根据被拖动的链接判断走置顶排序还是分类内排序
+        const activeLink = links.find(l => l.id === String(event.active.id));
+        if (!activeLink) return;
+        if (activeLink.pinned) {
+          handlePinnedDragEnd(event);
+        } else {
+          handleDragEnd(event, activeLink.categoryId);
+        }
+      }}
+    >
       <main className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
         {showPinnedWebsites && pinnedLinks.length > 0 && (
           <section id="cat-pinned">
