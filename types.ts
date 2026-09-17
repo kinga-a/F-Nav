@@ -186,4 +186,20 @@ export const INITIAL_LINKS: LinkItem[] = [
     categoryId: 'common',
     createdAt: Date.now(),
   },
+  {
+    id: '4',
+    title: 'Google',
+    url: 'https://www.youtube.com',
+    icon: 'https://www.youtube.com/favicon.ico',
+    categoryId: 'common',
+    createdAt: Date.now(),
+  },  
+  {
+    id: '5',
+    title: '本项目',
+    url: 'https://github.com/kinga-a/F-nav',
+    icon: 'https://github.com/favicon.ico',
+    categoryId: 'common',
+    createdAt: Date.now(),
+  },
 ];
