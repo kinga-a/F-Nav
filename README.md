@@ -3,7 +3,7 @@
 > [!WARNING]
 > **本项目基于蜗牛个人导航项目AI修改，添加了分类加密与私人书签,诗词功能等功能**
 > 
-> 原项目：[蜗牛个人导航]:https://github.com/eallion/favorite
+> 原项目：[蜗牛个人导航] : https://github.com/eallion/favorite
 
 
 > [!NOTE]
