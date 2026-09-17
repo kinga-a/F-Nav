@@ -170,7 +170,15 @@ export function AppLayout() {
 
   useEffect(() => {
     if (aiConfig) {
-      document.title = aiConfig.websiteTitle || 'F-Nav';
+       const title = aiConfig.websiteTitle || 'F-Nav';
+       document.title = title;
+ 
+       // 同步更新分享到社交平台时的标题（og:title / twitter:title）
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', title);
+      const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+      if (twitterTitle) twitterTitle.setAttribute('content', title);
+ 
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
       link.href = aiConfig.faviconUrl || '/favicon.ico';
