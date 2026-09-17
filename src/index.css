@@ -427,6 +427,11 @@ input, textarea, select {
     padding-bottom: 1rem;
   }
 
+  /* 例外：带 modal-center 标记的小弹窗（如分类解锁）保持垂直居中 */
+  .fixed.inset-0.z-\[60\].modal-center {
+    align-items: center !important;
+  }
+
   /* 模态框内容最大高度 */
   .max-w-md.max-h-\[92vh\] {
     max-height: 95vh !important;
