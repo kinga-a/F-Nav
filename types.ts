@@ -188,7 +188,7 @@ export const INITIAL_LINKS: LinkItem[] = [
   },
   {
     id: '4',
-    title: 'Google',
+    title: 'YouTube',
     url: 'https://www.youtube.com',
     icon: 'https://www.youtube.com/favicon.ico',
     categoryId: 'common',
