@@ -195,7 +195,7 @@ export function Header({
             <Menu size={24} />
           </button>
           <h1 className={`${isMobileSearchOpen ? 'hidden' : 'hidden sm:block'} text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent shrink-0`}>
-            {ai?.navigationName || '个人导航'}
+            {ai?.navigationName || 'F-Nav'}
           </h1>
         </div>
 
