@@ -1,7 +1,7 @@
 // 应用常量定义
 
 export const APP_CONFIG = {
-  name: 'F个人导航',
+  name: 'F-Nav',
   version: '1.0.0',
   description: '现代化云端导航页面',
   githubUrl: 'https://github.com/eallion/favorite-cloudflare',
