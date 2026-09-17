@@ -64,6 +64,8 @@ export function LinkCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    // 拖动排序模式下禁用浏览器触摸手势，避免 pointercancel 掐断 dnd-kit 拖拽（移动端必需）
+    touchAction: isDraggable && !isBatchEditMode ? 'none' : undefined,
   };
 
   const isDetailedView = viewMode === 'detailed';
@@ -93,7 +95,8 @@ export function LinkCard({
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isBatchEditMode || isEditMode) return;
+    // 拖动排序模式下放行触摸事件，交给 dnd-kit 处理（否则 preventDefault 会在移动端吞掉 pointer 事件导致拖不动）
+    if (isBatchEditMode || isEditMode || (isDraggable && !isBatchEditMode)) return;
     e.preventDefault();
     const touch = e.touches[0];
     (e.currentTarget as any).dataset.touchX = String(touch.clientX);
