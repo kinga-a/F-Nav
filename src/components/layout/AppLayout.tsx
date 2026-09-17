@@ -229,7 +229,8 @@ export function AppLayout() {
   }, []);
 
   // ===== 修复：确保保存时 id 有效，且使用最新的 links 状态 =====
-  const handleSaveLink = useCallback((link: LinkItem) => {
+  // keepOpen: 批量添加模式下保持弹窗打开
+  const handleSaveLink = useCallback((link: LinkItem, keepOpen?: boolean) => {
     // 确保 id 有效，如果无效则生成新 id
     const validLink = {
       ...link,
@@ -248,7 +249,9 @@ export function AppLayout() {
       setLinksAndSync([...links, validLink], categories);
       toast.success(`已添加「${validLink.title}」`);
     }
-    setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined);
+    if (!keepOpen) {
+      setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined);
+    }
   }, [editingLink, links, categories, setLinksAndSync]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, link: LinkItem) => {
