@@ -61,7 +61,7 @@ export interface AIConfig {
 }
 
 // 图标获取方式类型
-export type IconSourceType = 'faviconextractor' | 'google' | 'customapi' | 'customurl' | 'upload-edgeone' | 'upload-cloudflare' | 'xinac';
+export type IconSourceType = 'faviconextractor' | 'google' | 'customapi' | 'customurl' | 'upload-edgeone' | 'upload-cloudflare' | 'xinac' | 'origin';
 
 // 图标配置
 export interface IconConfig {
