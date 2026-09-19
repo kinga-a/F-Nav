@@ -145,8 +145,8 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
           toast.error('同步失败，请检查网络');
           return;
         }
+        // 同步成功不弹提示，避免与操作提示（创建/更新成功等）叠加造成多连弹
         dispatch({ type: 'SET_SYNC_STATUS', payload: 'saved' });
-        toast.success('数据已同步到云端');
         setTimeout(() => {
           dispatch({ type: 'SET_SYNC_STATUS', payload: 'idle' });
         }, 2000);
