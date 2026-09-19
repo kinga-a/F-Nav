@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, ArrowRight, Loader2, X } from 'lucide-react';
+import { toast } from './Toast';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose }) => {
       const success = await onLogin(password);
       if (success) {
         setPassword('');
+        toast.success('登录成功');
         onClose();
       } else {
         setError('密码错误或无法连接服务器');
