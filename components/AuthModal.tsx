@@ -4,12 +4,14 @@ import { toast } from './Toast';
 
 interface AuthModalProps {
   isOpen: boolean;
-  onLogin: (password: string) => Promise<boolean>;
+  onLogin: (password: string, totp?: string) => Promise<{ ok: boolean; error?: string }>;
   onClose: () => void;
+  totpEnabled?: boolean;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEnabled = false }) => {
   const [password, setPassword] = useState('');
+  const [totp, setTotp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -17,17 +19,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose }) => {
 
   const handleLogin = async () => {
     if (!password || isLoading) return;
+    if (totpEnabled && !/^\d{6}$/.test(totp.trim())) {
+      setError('请输入 6 位动态验证码');
+      return;
+    }
     setIsLoading(true);
     setError('');
 
     try {
-      const success = await onLogin(password);
-      if (success) {
+      const result = await onLogin(password, totp.trim());
+      if (result.ok) {
         setPassword('');
+        setTotp('');
         toast.success('登录成功');
         onClose();
       } else {
-        setError('密码错误或无法连接服务器');
+        setError(result.error || '密码错误或无法连接服务器');
       }
     } catch (e) {
       setError('登录请求失败，请检查网络');
@@ -79,6 +86,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose }) => {
               />
             </div>
 
+            {totpEnabled && (
+              <div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={totp}
+                  onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={handleKeyDown}
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-center text-lg tracking-[0.5em]"
+                  placeholder="两步验证码"
+                />
+                <p className="text-xs text-slate-400 text-center mt-1.5">
+                  请输入验证器 App 中的 6 位动态码（忘记可用恢复码登录）
+                </p>
+              </div>
+            )}
+
             {error && (
               <div className="text-red-500 text-sm text-center font-medium">
                 {error}
@@ -88,7 +114,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose }) => {
             <button
               type="button"
               onClick={handleLogin}
-              disabled={isLoading || !password}
+              disabled={isLoading || !password || (totpEnabled && totp.trim().length !== 6)}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoading ? <Loader2 className="animate-spin" /> : <>解锁进入 <ArrowRight size={18} /></>}
