@@ -116,11 +116,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { checkAuth, getConfig, key, readOnly } = req.query;
 
       if (checkAuth === 'true') {
+        // 增强：若请求携带 Token，顺带验证其有效性（被其他设备登录踢下线时前端可自动登出）
+        const providedToken = req.headers['x-auth-password'] as string | undefined;
+        let tokenValid: boolean | null = null;
+        if (providedToken) {
+          tokenValid = await verifyAuth(providedToken);
+        }
         return res.status(200).json({
           hasPassword: !!process.env.PASSWORD,
           requiresAuth: !!process.env.PASSWORD,
           readOnlyAccess: true,
           capabilities: { upload: false },
+          tokenValid,
         });
       }
 
