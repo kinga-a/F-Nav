@@ -7,6 +7,7 @@ interface AuthState {
   requiresAuth: boolean | null;
   isCheckingAuth: boolean;
   capabilities: { upload: boolean };
+  totpEnabled: boolean;
 }
 
 type AuthAction =
@@ -14,10 +15,16 @@ type AuthAction =
   | { type: 'SET_REQUIRES_AUTH'; payload: boolean }
   | { type: 'SET_CHECKING'; payload: boolean }
   | { type: 'SET_CAPABILITIES'; payload: { upload: boolean } }
+  | { type: 'SET_TOTP_ENABLED'; payload: boolean }
   | { type: 'LOGOUT' };
 
+export interface LoginResult {
+  ok: boolean;
+  error?: string;
+}
+
 interface AuthContextValue extends AuthState {
-  login: (password: string) => Promise<boolean>;
+  login: (password: string, totp?: string) => Promise<LoginResult>;
   logout: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -33,6 +40,8 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, isCheckingAuth: action.payload };
     case 'SET_CAPABILITIES':
       return { ...state, capabilities: action.payload };
+    case 'SET_TOTP_ENABLED':
+      return { ...state, totpEnabled: action.payload };
     case 'LOGOUT':
       return { ...state, authToken: null };
     default:
@@ -50,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     requiresAuth: null,
     isCheckingAuth: true,
     capabilities: { upload: true },
+    totpEnabled: false,
   });
 
   const checkAuth = useCallback(async () => {
@@ -64,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.capabilities) {
         dispatch({ type: 'SET_CAPABILITIES', payload: data.capabilities });
       }
+      dispatch({ type: 'SET_TOTP_ENABLED', payload: !!data.totpEnabled });
       // Token 已失效（如被其他设备登录顶掉）→ 自动登出，回到访客状态
       if (token && data.tokenValid === false) {
         localStorage.removeItem(STORAGE_KEYS.AUTH_KEY);
@@ -77,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (password: string): Promise<boolean> => {
+  const login = useCallback(async (password: string, totp?: string): Promise<LoginResult> => {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10s 超时
@@ -85,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(API_ENDPOINTS.AUTH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, totp }),
         signal: controller.signal,
       });
 
@@ -94,25 +105,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         console.error('Login failed:', res.status, errData);
-        return false;
+        return { ok: false, error: errData.error };
       }
 
       const data = await res.json();
       if (data.success && data.token) {
         localStorage.setItem(STORAGE_KEYS.AUTH_KEY, data.token);
         dispatch({ type: 'SET_TOKEN', payload: data.token });
-        return true;
+        return { ok: true };
       }
 
       console.error('Login response missing token:', data);
-      return false;
+      return { ok: false };
     } catch (e) {
       if (e.name === 'AbortError') {
         console.error('Login timeout');
       } else {
         console.error('Login error:', e);
       }
-      return false;
+      return { ok: false, error: '网络错误，请重试' };
     }
   }, []);
 
