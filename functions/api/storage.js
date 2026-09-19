@@ -104,11 +104,22 @@ export async function onRequest(context) {
       const categoryPassword = url.searchParams.get('catPassword');
 
       if (checkAuth === 'true') {
+        // 增强：若请求携带 Token，顺带验证其有效性（被其他设备登录踢下线时前端可自动登出）
+        const providedToken = request.headers.get('x-auth-password');
+        let tokenValid = null;
+        if (providedToken) {
+          tokenValid = await verifyAuth({
+            providedPassword: providedToken,
+            serverPassword: env.PASSWORD,
+            kv,
+          });
+        }
         return jsonResponse({
           hasPassword: !!env.PASSWORD,
           requiresAuth: !!env.PASSWORD,
           readOnlyAccess: true,
           capabilities: { upload: true },
+          tokenValid,
         }, 200, corsHeaders);
       }
 
