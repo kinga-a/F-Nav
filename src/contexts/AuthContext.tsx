@@ -55,11 +55,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     dispatch({ type: 'SET_CHECKING', payload: true });
     try {
-      const res = await fetch(`${API_ENDPOINTS.STORAGE}?checkAuth=true`);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_KEY);
+      const res = await fetch(`${API_ENDPOINTS.STORAGE}?checkAuth=true`, {
+        headers: token ? { 'x-auth-password': token } : undefined,
+      });
       const data = await res.json();
       dispatch({ type: 'SET_REQUIRES_AUTH', payload: data.requiresAuth });
       if (data.capabilities) {
         dispatch({ type: 'SET_CAPABILITIES', payload: data.capabilities });
+      }
+      // Token 已失效（如被其他设备登录顶掉）→ 自动登出，回到访客状态
+      if (token && data.tokenValid === false) {
+        localStorage.removeItem(STORAGE_KEYS.AUTH_KEY);
+        dispatch({ type: 'LOGOUT' });
       }
     } catch (e) {
       console.error('Check auth failed:', e);
