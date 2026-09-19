@@ -60,7 +60,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
     syncStatus: 'idle',
   });
 
-  const { authToken } = useAuthContext();
+  const { authToken, logout } = useAuthContext();
 
   // 防抖定时器 ref
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,7 +132,19 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify(pending),
       })
-      .then(() => {
+      .then(async (res) => {
+        if (res.status === 401) {
+          // Token 已失效（被其他设备登录顶掉/过期）→ 自动登出，回到访客模式
+          dispatch({ type: 'SET_SYNC_STATUS', payload: 'idle' });
+          logout();
+          toast.error('登录已在其他设备生效，本设备已退出登录');
+          return;
+        }
+        if (!res.ok) {
+          dispatch({ type: 'SET_SYNC_STATUS', payload: 'error' });
+          toast.error('同步失败，请检查网络');
+          return;
+        }
         dispatch({ type: 'SET_SYNC_STATUS', payload: 'saved' });
         toast.success('数据已同步到云端');
         setTimeout(() => {
@@ -147,7 +159,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
 
       pendingSyncRef.current = null;
     }, 500);
-  }, [authToken]);
+  }, [authToken, logout]);
 
   // 过滤私人书签：未登录时隐藏
   const visibleLinks = useMemo(() => {
