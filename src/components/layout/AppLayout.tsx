@@ -24,7 +24,7 @@ const ContextMenu = lazy(() => import('../../../components/ContextMenu'));
 const QRCodeModal = lazy(() => import('../../../components/QRCodeModal'));
 
 export function AppLayout() {
-  const { authToken, requiresAuth, isCheckingAuth, capabilities, login, logout } = useAuthContext();
+  const { authToken, requiresAuth, isCheckingAuth, capabilities, login, logout, totpEnabled } = useAuthContext();
   const { links = [], addLink, updateLink, deleteLink, deleteLinks, setLinksAndSync } = useLinksContext();
   const { categories = [], categoryTree = [], setCategoriesAndSync, unlockedCategoryIds, unlockCategory } = useCategoriesContext();
   const { ai: aiConfig, icon: iconConfig, viewMode, showPinnedWebsites, ticker, weather, website, webdav, search, setAI, setIcon, setWebsite, setShowPinned, setMastodon, setWeather, setWebDav, setSearch, setViewMode } = useConfigContext();
@@ -330,7 +330,7 @@ export function AppLayout() {
         <Header searchQuery={searchQuery} onSearchChange={setSearchQuery} isInternal={isInternal} onInternalChange={setIsInternal} onSearch={handleSearch} onAddLink={handleAddLink} onOpenSettings={() => setIsSettingsModalOpen(true)} onOpenCatManager={() => setIsCatManagerOpen(true)} onOpenBackup={() => setIsBackupModalOpen(true)} onOpenImport={() => setIsImportModalOpen(true)} onOpenAuth={() => setIsAuthOpen(true)} onToggleSidebar={() => setSidebarOpen(prev => !prev)} isBatchEditMode={isBatchEditMode} onToggleBatchEditMode={toggleBatchEditMode} isMobileSearchOpen={isMobileSearchOpen} onToggleMobileSearch={() => setIsMobileSearchOpen(prev => !prev)} isSearchExpanded={isSearchExpanded} setIsSearchExpanded={setIsSearchExpanded} isDragSortMode={isDragSortMode} onToggleDragSortMode={toggleDragSortMode} isEditMode={isEditMode} onToggleEditMode={toggleEditMode} visitorEngineId={visitorEngineId} onVisitorEngineChange={setVisitorEngineId} />
         <MainContent searchQuery={searchQuery} searchResults={searchResults} isBatchEditMode={isBatchEditMode} selectedLinks={selectedLinks} onToggleSelection={toggleLinkSelection} onEditLink={handleEditLink} onDeleteLink={handleDeleteLink} onContextMenu={handleContextMenu} isDragSortMode={isDragSortMode} isEditMode={isEditMode} onWeightChange={handleWeightChange} isInternal={isInternal} />
       </div>
-      <AuthModal isOpen={isAuthOpen} onLogin={login} onClose={() => setIsAuthOpen(false)} />
+      <AuthModal isOpen={isAuthOpen} onLogin={login} onClose={() => setIsAuthOpen(false)} totpEnabled={totpEnabled} />
       <Suspense fallback={null}>
         {isModalOpen && <LinkModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined); }} onSave={handleSaveLink} onDelete={editingLink ? () => handleDeleteLink(editingLink.id) : undefined} categories={categories} initialData={editingLink || prefillLink as LinkItem} aiConfig={aiConfig} defaultCategoryId={undefined} iconConfig={iconConfig} supportsUpload={capabilities?.upload ?? true} />}
         {isCatManagerOpen && <CategoryManagerModal isOpen={isCatManagerOpen} onClose={() => setIsCatManagerOpen(false)} categories={categories} links={links} onUpdateCategories={(newCats) => setCategoriesAndSync(newCats, links)} onDeleteCategory={(id) => { const newCats = categories.filter(c => c.id !== id); setCategoriesAndSync(newCats, links); }} onUpdateLinks={(newLinks) => setLinksAndSync(newLinks, categories)} />}
