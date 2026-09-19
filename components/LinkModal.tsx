@@ -301,8 +301,8 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
   const handleDelete = () => {
     if (!initialData) return;
+    // 删除成功提示统一由父组件（AppLayout 的 handleDeleteLink）弹出，这里不再重复提示
     onDelete && onDelete(initialData.id);
-    toast.success(`「${initialData.title}」已删除`);
     onClose();
   };
 
