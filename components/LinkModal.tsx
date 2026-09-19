@@ -368,12 +368,8 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       isPrivate
     }, batchMode);
 
-    if (!batchMode) {
-      toast.success(initialData ? `「${title}」已更新` : `「${title}」已添加`);
-    } else {
-      toast.success(`「${title}」已添加，可继续添加下一个`);
-    }
-    
+    // 保存成功提示统一由父组件（AppLayout）弹出，这里不再重复提示
+
     // 如果有自定义图标URL，缓存到KV空间
     if (icon && !icon.startsWith('/api/favicon') && !icon.includes('faviconextractor.com')) {
       cacheCustomIcon(finalUrl, icon);
