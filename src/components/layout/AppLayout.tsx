@@ -225,7 +225,7 @@ export function AppLayout() {
     const deletedTitle = linkToDelete?.title || '书签';
     const newLinks = links.filter(l => l.id !== id);
     setLinksAndSync(newLinks, categories);
-    toast.success(`「${deletedTitle}」已删除`);
+    toast.success(`「${deletedTitle}」删除成功`);
   }, [links, categories, setLinksAndSync, authToken]);
 
   const toggleLinkSelection = useCallback((id: string) => {
