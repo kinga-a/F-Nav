@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, X, Plus, Moon, Sun, Menu, Settings, Upload, CheckSquare, LogOut, Lock, GripVertical, Edit3, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { toast } from '../../components/Toast';
 import { useConfigContext } from '../../contexts/ConfigContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLinksContext } from '../../contexts/LinksContext';
@@ -437,7 +438,7 @@ export function Header({
                   </button>
 
                   {/* Logout */}
-                  <button onClick={logout} className="flex items-center justify-center p-1.5 sm:p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-[32px] sm:h-[36px] min-w-[32px] sm:min-w-[36px] cursor-pointer flex-shrink-0" title="退出登录">
+                  <button onClick={() => { logout(); toast.info('已退出登录'); }} className="flex items-center justify-center p-1.5 sm:p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 h-[32px] sm:h-[36px] min-w-[32px] sm:min-w-[36px] cursor-pointer flex-shrink-0" title="退出登录">
                     <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
                   </button>
 
