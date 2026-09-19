@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Settings, Clock, LayoutGrid, MessageCircle, Cloud, BookOpen, Upload, CloudCog, LogOut, Loader2, Plus, Trash2, Search } from 'lucide-react';
+import { X, Save, Settings, Clock, LayoutGrid, MessageCircle, Cloud, BookOpen, Upload, CloudCog, LogOut, Loader2, Plus, Trash2, Search, ShieldCheck } from 'lucide-react';
 import { AIConfig, PasswordExpiryConfig, TickerConfig, WeatherConfig, WeatherProvider, TickerSource, SearchConfig, IconConfig } from '../types';
 import { toast } from './Toast';
 import { SEARCH_ENGINES, DEFAULT_ICON_CONFIG } from '../src/constants';
@@ -63,6 +63,107 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [mastodonInput, setMastodonInput] = useState('');
+
+  // ===== TOTP 两步验证 =====
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [totpStage, setTotpStage] = useState<'idle' | 'setup'>('idle');
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpOtpauth, setTotpOtpauth] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [totpRecovery, setTotpRecovery] = useState(''); // 激活成功后仅显示一次
+  const [totpBusy, setTotpBusy] = useState(false);
+
+  // 打开面板时查询两步验证状态
+  useEffect(() => {
+    if (isOpen) {
+      setTotpStage('idle');
+      setTotpSecret('');
+      setTotpCode('');
+      setTotpRecovery('');
+      fetch('/api/storage?checkAuth=true')
+        .then(r => r.json())
+        .then(d => setTotpEnabled(!!d.totpEnabled))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const totpSetup = async () => {
+    setTotpBusy(true);
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        body: JSON.stringify({ action: 'totp-setup' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.secret) {
+        setTotpSecret(data.secret);
+        setTotpOtpauth(data.otpauth || '');
+        setTotpCode('');
+        setTotpStage('setup');
+      } else {
+        toast.error(data.error || '生成密钥失败');
+      }
+    } catch {
+      toast.error('网络错误，请重试');
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+
+  const totpActivate = async () => {
+    if (!/^\d{6}$/.test(totpCode.trim())) {
+      toast.warning('请输入验证器上显示的 6 位动态码');
+      return;
+    }
+    setTotpBusy(true);
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        body: JSON.stringify({ action: 'totp-activate', code: totpCode.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTotpRecovery(data.recovery || '');
+        setTotpEnabled(true);
+        setTotpStage('idle');
+        setTotpSecret('');
+        setTotpCode('');
+        toast.success('两步验证已开启');
+      } else {
+        toast.error(data.error || '验证码错误');
+      }
+    } catch {
+      toast.error('网络错误，请重试');
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+
+  const totpDisable = async () => {
+    if (!confirm('确定关闭两步验证吗？关闭后仅凭密码即可登录。')) return;
+    setTotpBusy(true);
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        body: JSON.stringify({ action: 'totp-disable' }),
+      });
+      if (res.ok) {
+        setTotpEnabled(false);
+        setTotpRecovery('');
+        toast.success('两步验证已关闭');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || '操作失败');
+      }
+    } catch {
+      toast.error('网络错误，请重试');
+    } finally {
+      setTotpBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -363,6 +464,109 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button onClick={() => update('defaultViewMode', 'compact')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${settings.defaultViewMode === 'compact' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-2 border-blue-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-transparent'}`}>简约</button>
                   <button onClick={() => update('defaultViewMode', 'detailed')} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${settings.defaultViewMode === 'detailed' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-2 border-blue-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-2 border-transparent'}`}>详细</button>
                 </div>
+              </section>
+
+              {/* 两步验证（TOTP） */}
+              <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
+                  <ShieldCheck size={16} /> 两步验证（TOTP）
+                </h4>
+
+                {totpEnabled ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                      <span className="text-sm text-green-800 dark:text-green-200 font-medium">已开启 — 登录时需输入动态验证码</span>
+                      <button
+                        type="button"
+                        onClick={totpDisable}
+                        disabled={totpBusy}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+                      >
+                        关闭
+                      </button>
+                    </div>
+                  </div>
+                ) : totpStage === 'setup' ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      1. 在验证器 App（Google Authenticator / Microsoft Authenticator / Aegis / 1Password 等）中「手动添加账户」，粘贴下方密钥；
+                      2. 输入 App 上显示的 6 位动态码确认绑定。
+                    </p>
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      <div className="text-xs text-slate-400 mb-1">密钥（Base32）</div>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs font-mono break-all text-slate-700 dark:text-slate-200 select-all">{totpSecret}</code>
+                        <button
+                          type="button"
+                          onClick={() => { navigator.clipboard.writeText(totpSecret); toast.success('密钥已复制'); }}
+                          className="px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-600 hover:border-blue-500 text-slate-600 dark:text-slate-300 transition-colors shrink-0"
+                        >
+                          复制
+                        </button>
+                      </div>
+                      <div className="text-xs text-slate-400 mt-2 mb-1">标准 URI（部分 App 支持直接导入）</div>
+                      <code className="text-[10px] font-mono break-all text-slate-500 dark:text-slate-400 select-all block">{totpOtpauth}</code>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={totpCode}
+                        onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="输入 6 位动态码"
+                        className="flex-1 p-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none text-center tracking-widest"
+                      />
+                      <button
+                        type="button"
+                        onClick={totpActivate}
+                        disabled={totpBusy}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        确认开启
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTotpStage('idle')}
+                      disabled={totpBusy}
+                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    >
+                      取消
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">未开启 — 登录时仅凭密码</span>
+                    <button
+                      type="button"
+                      onClick={totpSetup}
+                      disabled={totpBusy}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium transition-colors"
+                    >
+                      开启两步验证
+                    </button>
+                  </div>
+                )}
+
+                {totpRecovery && (
+                  <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-1">恢复码（仅显示这一次，请立即保存）</div>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-sm font-mono text-amber-900 dark:text-amber-100 select-all">{totpRecovery}</code>
+                      <button
+                        type="button"
+                        onClick={() => { navigator.clipboard.writeText(totpRecovery); toast.success('恢复码已复制'); }}
+                        className="px-2 py-1 text-xs rounded border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors shrink-0"
+                      >
+                        复制
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1.5">
+                      手机丢失或无法生成动态码时，可用恢复码登录（一次性有效，使用后两步验证自动关闭）。
+                    </p>
+                  </div>
+                )}
               </section>
 
               {/* 置顶网站 */}
