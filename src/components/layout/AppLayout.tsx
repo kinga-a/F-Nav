@@ -251,11 +251,11 @@ export function AppLayout() {
         links.map(l => l.id === validLink.id ? validLink : l),
         categories
       );
-      toast.success(`已更新「${validLink.title}」`);
+      toast.success(`「${validLink.title}」更新成功`);
     } else {
       // 新建链接
       setLinksAndSync([...links, validLink], categories);
-      toast.success(`已添加「${validLink.title}」`);
+      toast.success(`「${validLink.title}」创建成功`);
     }
     if (!keepOpen) {
       setIsModalOpen(false); setEditingLink(undefined); setPrefillLink(undefined);
