@@ -114,12 +114,15 @@ export async function onRequest(context) {
             kv,
           });
         }
+        // 是否已开启 TOTP 两步验证（登录弹窗据此显示动态码输入框）
+        const totpEnabled = !!(await kv.get('totp_secret'));
         return jsonResponse({
           hasPassword: !!env.PASSWORD,
           requiresAuth: !!env.PASSWORD,
           readOnlyAccess: true,
           capabilities: { upload: true },
           tokenValid,
+          totpEnabled,
         }, 200, corsHeaders);
       }
 
