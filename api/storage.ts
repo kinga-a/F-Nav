@@ -122,12 +122,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (providedToken) {
           tokenValid = await verifyAuth(providedToken);
         }
+        // 是否已开启 TOTP 两步验证（登录弹窗据此显示动态码输入框）
+        const totpEnabled = !!(await kv.get('totp_secret'));
         return res.status(200).json({
           hasPassword: !!process.env.PASSWORD,
           requiresAuth: !!process.env.PASSWORD,
           readOnlyAccess: true,
           capabilities: { upload: false },
           tokenValid,
+          totpEnabled,
         });
       }
 
