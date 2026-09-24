@@ -4,6 +4,7 @@ import { useLinksContext } from '../../contexts/LinksContext';
 import { useCategoriesContext } from '../../contexts/CategoriesContext';
 import { useConfigContext } from '../../contexts/ConfigContext';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { STORAGE_KEYS } from '../../constants';
 import { useDragSort } from '../../hooks/useDragSort';
 import { CategorySection } from '../category/CategorySection';
 import { PinnedSection } from '../link/PinnedSection';
@@ -129,6 +130,12 @@ export function MainContent({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={() => {
+        // 拖拽开始时震动反馈（可在设置中关闭；安卓支持，iOS Safari 不支持会静默忽略）
+        if (localStorage.getItem(STORAGE_KEYS.VIBRATION_KEY) !== 'false' && typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(20);
+        }
+      }}
       onDragEnd={(event) => {
         // 根据被拖动的链接判断走置顶排序还是分类内排序
         const activeLink = links.find(l => l.id === String(event.active.id));
