@@ -4,6 +4,7 @@ import { useCategoriesContext, CategoryWithChildren } from '../../contexts/Categ
 import { useConfigContext } from '../../contexts/ConfigContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useLinksContext } from '../../contexts/LinksContext';
+import { scrollToCategory } from '../../utils/scrollToCategory';
 import Icon from '../../../components/Icon';
 import { Category } from '../../../types';
 
@@ -44,9 +45,9 @@ export function Sidebar({
     if (cat.children && cat.children.length > 0) {
       toggleExpand(cat.id);
       const targetId = cat.children[0]?.id || cat.id;
-      document.getElementById(`cat-${targetId}`)?.scrollIntoView();
+      scrollToCategory(targetId);
     } else {
-      document.getElementById(`cat-${cat.id}`)?.scrollIntoView();
+      scrollToCategory(cat.id);
     }
     onClose();
   }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory]);
@@ -182,7 +183,7 @@ export function Sidebar({
           {showPinnedWebsites && (
             <button
               onClick={() => {
-                document.getElementById('cat-pinned')?.scrollIntoView();
+                scrollToCategory('pinned');
                 onClose();
               }}
               className={`w-full flex items-center py-3 rounded-xl transition-all cursor-pointer ${
