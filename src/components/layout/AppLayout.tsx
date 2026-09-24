@@ -5,6 +5,7 @@ import { useCategoriesContext } from '../../contexts/CategoriesContext';
 import { useConfigContext } from '../../contexts/ConfigContext';
 import { useSearch } from '../../hooks/useSearch';
 import { useDataSync } from '../../hooks/useDataSync';
+import { scrollToCategory } from '../../utils/scrollToCategory';
 import { toast } from '../../../components/Toast';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
@@ -286,7 +287,7 @@ export function AppLayout() {
 
   const handleUnlockCategory = useCallback((cat: Category) => {
     if (cat.hasPassword && !unlockedCategoryIds.has(cat.id)) setCatAuthModalData(cat);
-    else document.getElementById(`cat-${cat.id}`)?.scrollIntoView();
+    else scrollToCategory(cat.id);
   }, [unlockedCategoryIds]);
 
   const handleCategoryUnlock = useCallback((id: string) => {
