@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   CATEGORIES_CONFIG_KEY: 'cate_config',
   // 本地存储专用（用户个人偏好）
   VIEW_MODE_KEY: 'cloudnav_view_mode',
+  VIBRATION_KEY: 'fnav_vibration_enabled', // 震动反馈开关（设备级偏好，不云同步）
 } as const
 
 export const API_ENDPOINTS = {
