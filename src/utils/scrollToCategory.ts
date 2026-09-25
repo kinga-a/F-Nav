@@ -1,18 +1,41 @@
 /**
- * 分类锚点跳转工具
- *
- * 修复移动端定位不准的问题：
- * 1. 使用 smooth 平滑跳转；
- * 2. 跳转后延迟重定位两次，补偿懒加载图片撑开上方内容造成的位移
- *    （图片加载完布局稳定后，最终停在准确位置）。
+ * 滚动到对应分类区块
+ * @param element 分类DOM元素
+ * @param toTop 是否直接滚到容器顶部（用于第一个分类，保留置顶区域）
  */
-export function scrollToCategory(categoryId: string) {
-  const el = document.getElementById(`cat-${categoryId}`);
-  if (!el) return;
+export function scrollToCategory(element: HTMLElement | null, toTop = false) {
+  if (!element) return;
 
-  const jump = () => el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollContainer = document.querySelector<HTMLElement>('main.flex-1.overflow-y-auto');
+  if (!scrollContainer) return;
 
-  jump();
-  setTimeout(jump, 300);   // 补偿第一批懒加载图片
-  setTimeout(jump, 900);   // 布局完全稳定后的最终校正
+  // 第一个分类：直接滚动容器到顶部
+  if (toTop) {
+    scrollContainer.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+    return;
+  }
+
+  // 其他分类保持原有锚点逻辑
+  element.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  });
+
+  // 原有补偿逻辑，防止图片加载导致位置偏移
+  setTimeout(() => {
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, 300);
+
+  setTimeout(() => {
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, 900);
 }
