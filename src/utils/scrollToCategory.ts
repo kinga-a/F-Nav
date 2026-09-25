@@ -31,7 +31,7 @@ export function scrollToCategory(categoryId: string) {
       const h = header.getBoundingClientRect().height;
       if (h > 0) return h;
     }
-    return 100;
+    return 200;
   };
 
   const jump = () => {
