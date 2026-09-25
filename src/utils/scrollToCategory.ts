@@ -1,36 +1,57 @@
 /**
  * 分类锚点跳转工具
  *
- * 保留平滑滚动动画，同时修复移动端刷新后定位不准的问题：
- * - smooth 平滑滚动，目标分类标题顶到 Header（h-16 = 64px）下方；
- * - 动画结束后自动校正两次（瞬时、无感），补偿懒加载图片撑开
- *   上方布局造成的位移，最终停在准确位置。
+ * 修复移动端定位不准的问题：
+ * 1. 使用 smooth 平滑跳转；
+ * 2. 跳转后延迟重定位两次，补偿懒加载图片撑开上方内容造成的位移
+ *    （图片加载完布局稳定后，最终停在准确位置）。
+ *
+ * 对齐规则：无论点击哪个分类（置顶网站 / 常用推荐 / 其他分类），
+ * 分类标题都统一停在页面顶部固定头部（搜索栏）正下方同一高度，
+ * 不再出现有的分类贴顶、有的分类停在 80px 处的不一致现象。
  */
-
-const HEADER_HEIGHT = 64; // sticky Header 固定高度 h-16
-
 export function scrollToCategory(categoryId: string) {
   const el = document.getElementById(`cat-${categoryId}`);
   if (!el) return;
 
-  // 滚动容器：内容区 <main>（overflow-y-auto），兜底 document.scrollingElement
-  const container = el.closest('main') ?? document.scrollingElement;
-  if (!container) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-
-  // 计算目标分类标题顶到 Header 下方所需的滚动位置
-  const targetTop = () => {
-    const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top - HEADER_HEIGHT;
-    return Math.max(0, top);
+  // 找到实际滚动容器（本项目布局中 main 是 overflow-y-auto 的滚动容器）
+  const getContainer = (): HTMLElement | Window => {
+    const main = document.querySelector('main');
+    if (main) {
+      const style = getComputedStyle(main);
+      if (/(auto|scroll|overlay)/.test(style.overflowY)) return main;
+    }
+    return window;
   };
 
-  // 平滑滚动到目标
-  container.scrollTo({ top: targetTop(), behavior: 'smooth' });
+  // 顶部留白 = 固定头部（搜索栏）的高度；取不到时退回 scroll-mt-20 的 80px
+  const getHeaderOffset = (): number => {
+    const header = document.querySelector('header');
+    if (header && getComputedStyle(header).position === 'fixed') {
+      const h = header.getBoundingClientRect().height;
+      if (h > 0) return h;
+    }
+    return 20;
+  };
 
-  // 动画结束后的瞬时校正（补偿图片懒加载造成的布局位移，视觉无感）
-  const correct = () => container.scrollTo({ top: targetTop(), behavior: 'instant' });
-  setTimeout(correct, 700);  // 平滑动画完成后校正一次
-  setTimeout(correct, 1400); // 布局完全稳定后最终校正
+  const jump = () => {
+    const container = getContainer();
+    const offset = getHeaderOffset();
+
+    if (container === window) {
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    } else {
+      const top =
+        el.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        offset;
+      container.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
+
+  jump();
+  setTimeout(jump, 300);   // 补偿第一批懒加载图片
+  setTimeout(jump, 900);   // 布局完全稳定后的最终校正
 }
