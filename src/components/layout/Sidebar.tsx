@@ -19,6 +19,9 @@ interface SidebarProps {
   isDragging?: boolean;
 }
 
+/** 侧边栏关闭动画时长（与 CSS transition 保持一致） */
+const SIDEBAR_CLOSE_DURATION = 300;
+
 export function Sidebar({
   isOpen,
   onClose,
@@ -35,6 +38,16 @@ export function Sidebar({
   const { syncStatus } = useLinksContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  /**
+   * 获取滚动延迟：
+   * 移动端侧边栏是 fixed 定位，关闭时会影响布局，需等动画结束；
+   * 桌面端侧边栏是 static 定位，关闭不影响主内容布局，无需延迟。
+   */
+  const getScrollDelay = useCallback(() => {
+    const isMobile = window.innerWidth < 1024;
+    return isMobile ? SIDEBAR_CLOSE_DURATION + 50 : 0;
+  }, []);
+
   const handleCategoryClick = useCallback((cat: CategoryWithChildren) => {
     const isLocked = cat.hasPassword && !unlockedCategoryIds.has(cat.id);
     if (isLocked) {
@@ -42,15 +55,24 @@ export function Sidebar({
       return;
     }
 
+    let targetId: string;
     if (cat.children && cat.children.length > 0) {
       toggleExpand(cat.id);
-      const targetId = cat.children[0]?.id || cat.id;
-      scrollToCategory(targetId);
+      targetId = cat.children[0]?.id || cat.id;
     } else {
-      scrollToCategory(cat.id);
+      targetId = cat.id;
     }
+
     onClose();
-  }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory]);
+
+    // 等侧边栏关闭动画结束后再滚动，避免布局变化干扰平滑动画
+    scrollToCategory(targetId, { delay: getScrollDelay() });
+  }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory, getScrollDelay]);
+
+  const handlePinnedClick = useCallback(() => {
+    onClose();
+    scrollToCategory('pinned', { delay: getScrollDelay() });
+  }, [onClose, getScrollDelay]);
 
   const renderCategoryNode = (cat: CategoryWithChildren, level: number = 0) => {
     const isExpanded = expandedCategories.has(cat.id);
@@ -98,13 +120,10 @@ export function Sidebar({
   const MOBILE_SIDEBAR_WIDTH = 256;
 
   // 计算移动端 transform
-  // 桌面端 (lg:static) 不需要 transform，直接返回 undefined
   const getTransform = () => {
-    // 桌面端：lg:static 定位，不需要 transform
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
       return undefined;
     }
-    // 移动端
     if (isOpen) {
       return `translateX(${Math.min(0, dragOffset)}px)`;
     }
@@ -129,10 +148,7 @@ export function Sidebar({
 
   return (
     <>
-      {/* 遮罩层 - 仅移动端，点击关闭。
-          注意：不能条件卸载此元素——iOS Safari 下瞬间移除 fixed 全屏层
-          会在底部安全区留下残影（WebKit 合成层不重绘）。改为常驻 DOM，
-          用背景色过渡淡入淡出，透明时禁用指针事件 */}
+      {/* 遮罩层 - 仅移动端 */}
       <div
         className="fixed inset-0 z-20 lg:hidden"
         style={{
@@ -147,8 +163,6 @@ export function Sidebar({
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-30 ${isCollapsed ? 'w-16' : 'w-64 lg:w-48 xl:w-64'} bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-x-hidden`}
         style={{
-          // 移动端：内联 transform 控制显示/隐藏/拖动
-          // 桌面端：由 lg:static 自动定位，transform 不生效
           transform: getTransform(),
           transition: isDragging ? 'none' : 'transform 0.3s ease-in-out',
           willChange: isDragging ? 'transform' : 'auto',
@@ -182,10 +196,7 @@ export function Sidebar({
         <div className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide">
           {showPinnedWebsites && (
             <button
-              onClick={() => {
-                scrollToCategory('pinned');
-                onClose();
-              }}
+              onClick={handlePinnedClick}
               className={`w-full flex items-center py-3 rounded-xl transition-all cursor-pointer ${
                 activeCategoryId === 'pinned'
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
