@@ -6,12 +6,11 @@
  * 2. 跳转后延迟重定位两次，补偿懒加载图片撑开上方内容造成的位移
  *    （图片加载完布局稳定后，最终停在准确位置）。
  *
- * @param toTop 点击"第一个分类"时传 true：直接滚回页面最顶端。
- *  原因：页面最上方可能有"置顶网站"区块，若仍按 scrollIntoView + scroll-margin
- *  （scroll-mt-20 = 80px）对齐，第一个分类会停在距顶 80px 处，置顶区块被裁掉一半，
- *  用户还需手动再滑一下才能到顶。
+ * 对齐规则：无论点击哪个分类（置顶网站 / 常用推荐 / 其他分类），
+ * 分类标题都统一停在页面顶部固定头部（搜索栏）正下方同一高度，
+ * 不再出现有的分类贴顶、有的分类停在 80px 处的不一致现象。
  */
-export function scrollToCategory(categoryId: string, toTop = false) {
+export function scrollToCategory(categoryId: string) {
   const el = document.getElementById(`cat-${categoryId}`);
   if (!el) return;
 
@@ -25,12 +24,31 @@ export function scrollToCategory(categoryId: string, toTop = false) {
     return window;
   };
 
-  const jump = () => {
-    if (toTop) {
-      getContainer().scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+  // 顶部留白 = 固定头部（搜索栏）的高度；取不到时退回 scroll-mt-20 的 80px
+  const getHeaderOffset = (): number => {
+    const header = document.querySelector('header');
+    if (header && getComputedStyle(header).position === 'fixed') {
+      const h = header.getBoundingClientRect().height;
+      if (h > 0) return h;
     }
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return 80;
+  };
+
+  const jump = () => {
+    const container = getContainer();
+    const offset = getHeaderOffset();
+
+    if (container === window) {
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    } else {
+      const top =
+        el.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        offset;
+      container.scrollTo({ top, behavior: 'smooth' });
+    }
   };
 
   jump();
