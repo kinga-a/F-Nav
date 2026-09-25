@@ -187,7 +187,9 @@ export function Sidebar({
           {showPinnedWebsites && (
             <button
               onClick={() => {
-                scrollToCategory('pinned');
+                // 置顶网站在页面最顶端，直接滚到顶部，
+                // 避免 scroll-margin 让它停在距顶 80px 处
+                scrollToCategory('pinned', true);
                 onClose();
               }}
               className={`w-full flex items-center py-3 rounded-xl transition-all cursor-pointer ${
