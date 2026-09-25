@@ -42,19 +42,15 @@ export function Sidebar({
       return;
     }
 
-    // 第一个分类（分类目录第一项）：点击后应回到页面最顶端，
-    // 否则 scroll-margin 会让页面停在距顶 80px 处，还需要手动再滑一下
-    const isFirstCategory = categoryTree[0]?.id === cat.id;
-
     if (cat.children && cat.children.length > 0) {
       toggleExpand(cat.id);
       const targetId = cat.children[0]?.id || cat.id;
-      scrollToCategory(targetId, isFirstCategory);
+      scrollToCategory(targetId);
     } else {
-      scrollToCategory(cat.id, isFirstCategory);
+      scrollToCategory(cat.id);
     }
     onClose();
-  }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory, categoryTree]);
+  }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory]);
 
   const renderCategoryNode = (cat: CategoryWithChildren, level: number = 0) => {
     const isExpanded = expandedCategories.has(cat.id);
@@ -187,9 +183,7 @@ export function Sidebar({
           {showPinnedWebsites && (
             <button
               onClick={() => {
-                // 置顶网站在页面最顶端，直接滚到顶部，
-                // 避免 scroll-margin 让它停在距顶 80px 处
-                scrollToCategory('pinned', true);
+                scrollToCategory('pinned');
                 onClose();
               }}
               className={`w-full flex items-center py-3 rounded-xl transition-all cursor-pointer ${
