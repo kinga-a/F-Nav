@@ -42,30 +42,26 @@ export function Sidebar({
       return;
     }
 
-    // 判断是否是根目录第一个分类
-    const isFirstCategory = cat.id === categoryTree[0]?.id;
-    let targetId: string;
+    // 第一个分类（分类目录第一项）：点击后应回到页面最顶端，
+    // 否则 scroll-margin 会让页面停在距顶 80px 处，还需要手动再滑一下
+    const isFirstCategory = categoryTree[0]?.id === cat.id;
 
     if (cat.children && cat.children.length > 0) {
       toggleExpand(cat.id);
-      targetId = cat.children[0]?.id || cat.id;
+      const targetId = cat.children[0]?.id || cat.id;
+      scrollToCategory(targetId, isFirstCategory);
     } else {
-      targetId = cat.id;
+      scrollToCategory(cat.id, isFirstCategory);
     }
-
-    // 获取DOM元素
-    const targetEl = document.getElementById(`category-${targetId}`);
-    scrollToCategory(targetEl, isFirstCategory);
-
-    // 移动端关闭侧边栏
     onClose();
-  }, [categoryTree, toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory]);
+  }, [toggleExpand, onClose, unlockedCategoryIds, onUnlockCategory, categoryTree]);
 
   const renderCategoryNode = (cat: CategoryWithChildren, level: number = 0) => {
     const isExpanded = expandedCategories.has(cat.id);
     const isActive = activeCategoryId === cat.id;
     const hasChildren = cat.children && cat.children.length > 0;
     const isLocked = cat.hasPassword && !unlockedCategoryIds.has(cat.id);
+
     return (
       <div key={cat.id}>
         <button
@@ -93,6 +89,7 @@ export function Sidebar({
             {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-2 shrink-0"></div>}
           </div>
         </button>
+
         {hasChildren && isExpanded && !isCollapsed && !isLocked && (
           <div className="space-y-1 mt-1">
             {cat.children.map(child => renderCategoryNode(child, level + 1))}
@@ -103,6 +100,7 @@ export function Sidebar({
   };
 
   const MOBILE_SIDEBAR_WIDTH = 256;
+
   // 计算移动端 transform
   // 桌面端 (lg:static) 不需要 transform，直接返回 undefined
   const getTransform = () => {
@@ -130,6 +128,7 @@ export function Sidebar({
     }
     return isOpen ? 0.5 : 0;
   };
+
   const overlayOpacity = getOverlayOpacity();
 
   return (
@@ -147,6 +146,7 @@ export function Sidebar({
         }}
         onClick={onClose}
       />
+
       {/* 侧边栏 */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-30 ${isCollapsed ? 'w-16' : 'w-64 lg:w-48 xl:w-64'} bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col overflow-x-hidden`}
@@ -181,13 +181,13 @@ export function Sidebar({
             <X size={18} />
           </button>
         </div>
+
         {/* 内容 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-hide">
           {showPinnedWebsites && (
             <button
               onClick={() => {
-                const targetEl = document.getElementById('category-pinned');
-                scrollToCategory(targetEl, false);
+                scrollToCategory('pinned');
                 onClose();
               }}
               className={`w-full flex items-center py-3 rounded-xl transition-all cursor-pointer ${
@@ -201,6 +201,7 @@ export function Sidebar({
               <span className={`whitespace-nowrap overflow-hidden text-left transition-all ease-in-out ${isCollapsed ? 'max-w-0 opacity-0 ml-0 duration-150' : 'max-w-[200px] opacity-100 ml-3 duration-300 delay-150'}`}>置顶网站</span>
             </button>
           )}
+
           <div className={`flex items-center justify-between px-4 transition-all duration-300 overflow-hidden ${isCollapsed ? 'h-0 opacity-0 mt-0 mb-0' : 'h-10 mt-4 mb-2 opacity-100'}`}>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">分类目录</span>
             {authToken && (
@@ -214,8 +215,10 @@ export function Sidebar({
             )}
           </div>
           <div className={`mx-2 border-b border-slate-100 dark:border-slate-700/50 transition-all duration-300 ${isCollapsed ? 'mb-4 mt-2' : 'mb-0 mt-0 h-0 border-transparent opacity-0'}`}></div>
+
           {categoryTree.map(cat => renderCategoryNode(cat, 0))}
         </div>
+
         <div className="flex-shrink-0" />
       </aside>
     </>
