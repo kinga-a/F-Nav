@@ -297,8 +297,15 @@ export function AppLayout() {
 
   if (isInitialLoading) {
     return (
-      <div className="flex h-[100dvh] bg-slate-50 dark:bg-slate-900 flex-col items-center justify-center gap-4 text-slate-900 dark:text-slate-50">
-        <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+      <div className="flex h-[100dvh] bg-slate-50 dark:bg-slate-900 flex-col items-center justify-center gap-6 text-slate-900 dark:text-slate-50">
+        <div className="tap-hand">
+          <div className="tap-finger"></div>
+          <div className="tap-finger"></div>
+          <div className="tap-finger"></div>
+          <div className="tap-finger"></div>
+          <div className="tap-palm"></div>
+          <div className="tap-thumb"></div>
+        </div>
         <div className="text-lg font-bold tracking-wider text-slate-700 dark:text-slate-300">F-Nav</div>
       </div>
     );
