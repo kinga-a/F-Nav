@@ -148,7 +148,7 @@ export function LinkCard({
           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
       } ${isBatchEditMode ? 'cursor-pointer' : isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${
         isDetailedView
-          ? 'flex flex-col rounded-2xl border shadow-sm p-3 aspect-square items-center justify-center text-center w-full md:max-w-40 md:justify-self-center min-w-0 overflow-hidden'
+          ? 'flex flex-col rounded-2xl border shadow-sm p-3 md:p-2 aspect-square items-center justify-center text-center w-full md:w-16 md:h-16 md:aspect-auto min-w-0 overflow-hidden'
           : 'flex items-center justify-between rounded-xl border shadow-sm p-3'
       } ${isDragging ? 'shadow-2xl scale-105' : ''}`}
       onClick={handleClick}
@@ -215,20 +215,20 @@ export function LinkCard({
 
       {/* Link content */}
       <div className={`icon-main flex flex-1 min-w-0 overflow-hidden h-full w-full ${
-        isDetailedView ? 'flex flex-col items-center justify-center gap-2 text-center' : 'items-center'
+        isDetailedView ? 'flex flex-col items-center justify-center gap-2 md:gap-1 text-center' : 'items-center'
       }`}>
         {isDetailedView ? (
           <>
             <div className="relative shrink-0">
-              <div className="flex items-center justify-center text-xs font-bold uppercase w-12 h-12 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
+              <div className="flex items-center justify-center text-xs md:text-[10px] font-bold uppercase w-12 h-12 md:w-8 md:h-8 rounded-xl md:rounded-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
                 style={{ color: fallbackColor }}>
-                {iconSrc ? <img src={iconSrc} alt="" className="w-7 h-7" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
+                {iconSrc ? <img src={iconSrc} alt="" className="w-7 h-7 md:w-4 md:h-4" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
               </div>
               {link.isPrivate && (
                 <span className="absolute -top-0.5 -right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
               )}
             </div>
-            <h3 className="w-full min-w-0 text-slate-800 dark:text-slate-200 text-xs font-medium leading-snug overflow-hidden line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
+            <h3 className="w-full min-w-0 text-slate-800 dark:text-slate-200 text-xs md:text-[9px] font-medium leading-snug md:leading-tight overflow-hidden line-clamp-2 md:line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
               {link.title}
             </h3>
           </>
