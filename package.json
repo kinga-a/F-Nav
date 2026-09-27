@@ -14,15 +14,15 @@
     "typescript",
     "vite"
   ],
-  "author": "eallion",
+  "author": "kinga-a",
   "license": "MIT",
-  "homepage": "https://github.com/eallion/favorite",
+  "homepage": "https://github.com/kinga-a/f-nav",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eallion/favorite.git"
+    "url": "https://github.com/kinga-a/f-nav.git"
   },
   "bugs": {
-    "url": "https://github.com/eallion/favorite/issues"
+    "url": "https://github.com/kinga-a/f-nav/issues"
   },
   "engines": {
     "node": ">=18.0.0",
