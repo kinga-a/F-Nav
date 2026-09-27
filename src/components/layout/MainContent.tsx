@@ -88,7 +88,8 @@ export function MainContent({
 
   const gridClass = viewMode === 'detailed'
     ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
-    : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10';
+    // 简约模式与分类卡片保持一致：固定 80px 正方形，避免搜索结果格子被拉大成大方块
+    : 'grid-cols-[repeat(auto-fill,80px)]';
 
   if (searchQuery.trim() && isInternal) {
     return (
