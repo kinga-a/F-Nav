@@ -16,15 +16,11 @@ const CardSkeleton: React.FC<CardSkeletonProps> = ({
       {skeletons.map((index) => (
         <div
           key={index}
-          className={`relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden ${
+          className={`skeleton-shimmer bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden ${
             viewMode === 'detailed'
               ? 'flex flex-col rounded-2xl p-4 min-h-[100px]'
               : 'flex items-center rounded-xl p-3'
           }`}
-          style={{
-            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            animationDelay: `${index * 50}ms`,
-          }}
         >
           {viewMode === 'detailed' ? (
             <div className="flex flex-col md:flex-row md:items-start gap-3 w-full">
