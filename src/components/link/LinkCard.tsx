@@ -148,7 +148,7 @@ export function LinkCard({
           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
       } ${isBatchEditMode ? 'cursor-pointer' : isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${
         isDetailedView
-          ? 'flex flex-col rounded-2xl border shadow-sm p-4 min-h-[100px] items-start justify-start text-left w-full min-w-0'
+          ? 'flex flex-col rounded-2xl border shadow-sm p-3 aspect-square items-center justify-center text-center w-full min-w-0 overflow-hidden'
           : 'flex items-center justify-between rounded-xl border shadow-sm p-3'
       } ${isDragging ? 'shadow-2xl scale-105' : ''}`}
       onClick={handleClick}
@@ -215,50 +215,22 @@ export function LinkCard({
 
       {/* Link content */}
       <div className={`icon-main flex flex-1 min-w-0 overflow-hidden h-full w-full ${
-        isDetailedView ? 'flex-col md:flex-row md:gap-4 md:items-center' : 'items-center'
+        isDetailedView ? 'flex flex-col items-center justify-center gap-2 text-center' : 'items-center'
       }`}>
         {isDetailedView ? (
           <>
-            <div className="flex flex-col md:flex-row md:items-start gap-3 w-full min-w-0">
-              <div className="flex items-center gap-3 w-full md:hidden">
-                <div className="relative shrink-0">
-                  <div className="flex items-center justify-center text-sm font-bold uppercase w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
-                    style={{ color: fallbackColor }}>
-                    {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
-                  </div>
-                  {link.isPrivate && (
-                    <span className="absolute top-0.5 right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
-                  )}
-                </div>
-                <h3 className="flex-1 min-w-0 text-slate-800 dark:text-slate-200 text-base font-medium overflow-hidden text-ellipsis whitespace-nowrap group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
-                  {link.title}
-                </h3>
+            <div className="relative shrink-0">
+              <div className="flex items-center justify-center text-xs font-bold uppercase w-12 h-12 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
+                style={{ color: fallbackColor }}>
+                {iconSrc ? <img src={iconSrc} alt="" className="w-7 h-7" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
               </div>
-              {link.description && (
-                <p className="w-full md:hidden text-sm text-slate-600 dark:text-slate-400 leading-relaxed overflow-hidden text-ellipsis whitespace-nowrap" title={link.description}>
-                  {link.description}
-                </p>
+              {link.isPrivate && (
+                <span className="absolute -top-0.5 -right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
               )}
-              <div className="relative hidden md:flex shrink-0">
-                <div className="flex items-center justify-center text-sm font-bold uppercase w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
-                  style={{ color: fallbackColor }}>
-                  {iconSrc ? <img src={iconSrc} alt="" className="w-10 h-10" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
-                </div>
-                {link.isPrivate && (
-                  <span className="absolute top-1 right-1 text-xs leading-none" title="私人书签">🔒</span>
-                )}
-              </div>
-              <div className="hidden md:flex flex-1 min-w-0 flex-col justify-start w-full">
-                <h3 className="text-slate-800 dark:text-slate-200 text-base font-medium w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
-                  {link.title}
-                </h3>
-                {link.description && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" title={link.description}>
-                    {link.description}
-                  </p>
-                )}
-              </div>
             </div>
+            <h3 className="w-full min-w-0 text-slate-800 dark:text-slate-200 text-xs font-medium leading-snug overflow-hidden line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
+              {link.title}
+            </h3>
           </>
         ) : (
           <>
@@ -290,7 +262,7 @@ export function LinkCard({
         <button
           {...attributes}
           {...listeners}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing"
+          className={`${isDetailedView ? 'absolute top-1 right-1' : ''} opacity-0 group-hover:opacity-100 transition-opacity p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-grab active:cursor-grabbing`}
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical size={16} />
