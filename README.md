@@ -8,7 +8,7 @@
 > - **右下角回到顶部按钮**
 > - **抓取描述按钮**：创建/编辑链接时一键读取目标页 `<title>` 与 `<meta name="description">` 自动填充描述（无需 AI）
 > - **移动端安全区适配**：viewport `viewport-fit=cover` + `dvh` 视口，修复 iOS Safari 弹窗留白/贴边
-> - **性能优化**：lucide-react 显式按需引入（首屏图标 chunk 由 ~560KB 降至 ~30KB）、LinkCard `React.memo`、清理开发期资源引用
+> - **性能优化**：lucide-react 显式按需引入（首屏图标 chunk 由 ~560KB 降至 ~30KB）、LinkCard `React.memo`
 >
 > 原项目：[eallion/favorite](https://github.com/eallion/favorite)
 
