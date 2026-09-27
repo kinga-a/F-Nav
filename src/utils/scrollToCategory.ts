@@ -24,15 +24,14 @@ export function scrollToCategory(categoryId: string) {
     return window;
   };
 
-  // 顶部留白 = Header 实际渲染高度 + 24px 呼吸间距（动态测量，不写死；手机端含安全区也能算对）
-  // Header 是 sticky 定位（不是 fixed），不能再用 position === 'fixed' 判断
+  // 顶部留白 = 固定头部（搜索栏）的高度；取不到时退回 scroll-mt-20 的 80px
   const getHeaderOffset = (): number => {
     const header = document.querySelector('header');
-    if (header) {
+    if (header && getComputedStyle(header).position === 'fixed') {
       const h = header.getBoundingClientRect().height;
-      if (h > 0) return h + 24;
+      if (h > 0) return h;
     }
-    return 64 + 24;
+    return 50;
   };
 
   const jump = () => {
