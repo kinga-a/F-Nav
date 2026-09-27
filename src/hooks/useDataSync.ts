@@ -92,9 +92,18 @@ export function useDataSync() {
     if (initialized.current) return;
     initialized.current = true;
 
+    // 回收孤儿书签：categoryId 指向已删除分类的，统一归到默认分类 common（常用推荐）
+    const normalizeOrphans = (list: LinkItem[], cats: Category[]): LinkItem[] => {
+      const validIds = new Set(cats.map(c => c.id));
+      return list.map(l => {
+        if (l.pinned || l.categoryId === 'common' || validIds.has(l.categoryId)) return l;
+        return { ...l, categoryId: 'common' };
+      });
+    };
+
     // 1. 先从本地加载（快速展示）
     const local = loadFromLocal();
-    initLinks(local.links);
+    initLinks(normalizeOrphans(local.links, local.categories));
     initCategories(local.categories);
 
     // 2. 并行从云端获取最新数据
@@ -108,10 +117,11 @@ export function useDataSync() {
       if (cats.length > 0 && !cats.some((c: Category) => c.id === 'common')) {
         cats = [{ id: 'common', name: '常用推荐', icon: 'Star' }, ...cats];
       }
-      initLinks(cloud.links || []);
+      const fixedLinks = normalizeOrphans(cloud.links || [], cats);
+      initLinks(fixedLinks);
       initCategories(cats);
       localStorage.setItem(STORAGE_KEYS.LOCAL_STORAGE_KEY, JSON.stringify({
-        links: cloud.links || [],
+        links: fixedLinks,
         categories: cats,
       }));
     }
