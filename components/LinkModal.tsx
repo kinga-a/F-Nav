@@ -173,11 +173,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
-      setClosing(true);
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setClosing(false));
-      });
-      return () => cancelAnimationFrame(raf);
+      setClosing(false);
     } else if (mounted) {
       setClosing(true);
       const t = setTimeout(() => { setMounted(false); setClosing(false); }, 200);
@@ -511,8 +507,8 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   if (!mounted) return null;
 
   return (
-    <div className={`fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm overflow-y-auto transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}>
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 my-auto pb-[env(safe-area-inset-bottom)] transition-all duration-200 ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
+    <div className={`fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm overflow-y-auto transition-opacity duration-200 ${!closing ? 'modal-overlay' : ''} ${closing ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 my-auto pb-[env(safe-area-inset-bottom)] transition-all duration-200 ${!closing ? 'modal-panel' : ''} ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
         <div className="flex justify-between items-start sm:items-center p-4 border-b border-slate-200 dark:border-slate-700 gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-semibold dark:text-white">
