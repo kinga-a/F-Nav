@@ -434,10 +434,19 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     setIsFetchingMeta(true);
     try {
       const res = await fetch(`/api/metadata?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        toast.warning('抓取失败，该网站可能禁止访问');
+        return;
+      }
       const data = await res.json();
-      if (data.title && !title.trim()) setTitle(data.title);
+      const gotTitle = !!(data.title && !title.trim());
+      if (gotTitle) setTitle(data.title);
       if (data.description) setDescription(data.description);
-      toast.success('已从网页抓取标题与描述');
+      if (data.description || gotTitle) {
+        toast.success('已从网页抓取标题与描述');
+      } else {
+        toast.warning('该网页没有提供描述信息');
+      }
     } catch (e) {
       console.error('Fetch meta failed', e);
       toast.warning('抓取失败，该网站可能禁止访问');
