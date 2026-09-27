@@ -23,12 +23,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEna
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
-      // 先以隐藏态挂载，下一帧再切到显示态，enter 过渡才有起点
-      setClosing(true);
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setClosing(false));
-      });
-      return () => cancelAnimationFrame(raf);
+      setClosing(false);
     } else if (mounted) {
       setClosing(true);
       const t = setTimeout(() => { setMounted(false); setClosing(false); }, EXIT_MS);
@@ -71,8 +66,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEna
   };
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}>
-      <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-700 relative transition-all duration-200 ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-opacity duration-200 ${!closing ? 'modal-overlay' : ''} ${closing ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-700 relative transition-all duration-200 ${!closing ? 'modal-panel' : ''} ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
         {/* 关闭按钮 */}
         <button
           type="button"
