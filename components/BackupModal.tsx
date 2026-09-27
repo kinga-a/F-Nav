@@ -165,7 +165,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
   const handleSaveConfig = () => {
     onSaveWebDavConfig(config);
-    // Automatically test upon save if enabled
     if (config.enabled) {
         handleTestConnection();
     }
@@ -204,11 +203,9 @@ const BackupModal: React.FC<BackupModalProps> = ({
             });
         }
         onRestore(finalLinks, data.categories);
-        // 恢复搜索配置（如果存在）
         if (data.searchConfig) {
             onRestoreSearchConfig(data.searchConfig);
         }
-        // 恢复AI配置（如果存在）
         if (data.aiConfig) {
             onRestoreAIConfig(data.aiConfig);
         }
@@ -234,7 +231,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
       setImportMsg(`正在读取本地图标 (${curr}/${tot})...`);
     });
 
-    // 也获取 config key 以备份所有设置
     let appConfig = null;
     try {
       const res = await fetch('/api/storage?key=config');
@@ -269,7 +265,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
       try {
         const data = JSON.parse(e.target?.result as string);
 
-        // 验证备份文件基本结构
         if (!Array.isArray(data.links) || !Array.isArray(data.categories)) {
           setImportStatus('error');
           setImportMsg('无效的备份文件：缺少 links 或 categories 数据。');
@@ -296,15 +291,12 @@ const BackupModal: React.FC<BackupModalProps> = ({
           });
         }
 
-        // 恢复链接和分类
         onRestore(finalLinks, data.categories);
 
-        // 恢复搜索配置
         if (data.searchConfig) {
           onRestoreSearchConfig(data.searchConfig);
         }
 
-        // 恢复 AI 配置
         if (data.aiConfig) {
           onRestoreAIConfig(data.aiConfig);
         }
@@ -316,7 +308,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
         setImportMsg('解析备份文件失败，请确认文件格式正确。');
       }
 
-      // 重置 file input
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -327,7 +318,7 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-[90dvh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold dark:text-white flex items-center gap-2">
             <Cloud className="text-blue-500" /> 备份与恢复
@@ -339,7 +330,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
             
-            {/* Section 1: WebDAV Configuration */}
             <section className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h4 className="font-medium text-slate-800 dark:text-slate-200">WebDAV 设置 (坚果云/<a href="https://infini-cloud.net/en/modules/mypage/usage/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 underline">InfiniCloud</a>等)</h4>
@@ -408,7 +398,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
             <hr className="border-slate-200 dark:border-slate-700" />
 
-            {/* Section 2: Sync Actions */}
             <section className="space-y-4">
                 <h4 className="font-medium text-slate-800 dark:text-slate-200">云端同步操作</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -446,7 +435,6 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
             <hr className="border-slate-200 dark:border-slate-700" />
 
-             {/* Section 3: Local Export & Import */}
              <section className="space-y-4">
                 <h4 className="font-medium text-slate-800 dark:text-slate-200">本地导出与恢复</h4>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-700/30 flex items-center justify-between">
