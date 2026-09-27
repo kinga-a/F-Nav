@@ -10,7 +10,6 @@ import { toast } from '../../../components/Toast';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MainContent } from './MainContent';
-import { ContentSkeleton } from './ContentSkeleton';
 import { LinkItem, Category } from '../../../types';
 import AuthModal from '../../../components/AuthModal';
 
@@ -298,28 +297,9 @@ export function AppLayout() {
 
   if (isInitialLoading) {
     return (
-      <div className="flex h-[100dvh] bg-slate-50 dark:bg-slate-900 overflow-hidden text-slate-900 dark:text-slate-50">
-        <aside className="hidden lg:flex w-48 xl:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-col">
-          <div className="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-700">
-            <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse" />
-          </div>
-          <div className="flex-1 p-4 space-y-2">
-            {[1,2,3,4,5].map(i => (
-              <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 animate-pulse" />
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" style={{ width: `${50+i*10}%` }} />
-              </div>
-            ))}
-          </div>
-        </aside>
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 h-16 flex items-center px-4 lg:px-8">
-            <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse" />
-            <div className="flex-1 max-w-lg mx-4"><div className="h-9 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" /></div>
-            <div className="flex gap-2"><div className="w-9 h-9 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" /><div className="w-9 h-9 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" /></div>
-          </header>
-          <ContentSkeleton viewMode="detailed" />
-        </div>
+      <div className="flex h-[100dvh] bg-slate-50 dark:bg-slate-900 flex-col items-center justify-center gap-4 text-slate-900 dark:text-slate-50">
+        <div className="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+        <div className="text-lg font-bold tracking-wider text-slate-700 dark:text-slate-300">F-Nav</div>
       </div>
     );
   }
