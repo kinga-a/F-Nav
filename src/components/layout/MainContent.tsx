@@ -9,6 +9,7 @@ import { useDragSort } from '../../hooks/useDragSort';
 import { CategorySection } from '../category/CategorySection';
 import { PinnedSection } from '../link/PinnedSection';
 import { LinkCard } from '../link/LinkCard';
+import { BackToTop } from './BackToTop';
 import { LinkItem } from '../../../types';
 
 interface MainContentProps {
@@ -22,7 +23,7 @@ interface MainContentProps {
   onContextMenu: (e: React.MouseEvent, link: LinkItem) => void;
   isDragSortMode: boolean;
   isEditMode: boolean;
-  onWeightChange?: (linkId: string, weight: number) => void;
+  onWeightChange: (linkId: string, weight: number) => void;
   isInternal: boolean;
 }
 
@@ -81,7 +82,7 @@ export function MainContent({
     return () => {
       clearTimeout(timeoutId);
       observer.disconnect();
-      sectionsRef.current = null;
+      observerRef.current = null;
     };
   }, []); // 只在挂载时执行，不依赖 links/categories 变化
 
@@ -196,6 +197,7 @@ export function MainContent({
             />
           );
         })}
+        <BackToTop />
       </main>
     </DndContext>
   );
