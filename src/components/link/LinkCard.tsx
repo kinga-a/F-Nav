@@ -29,7 +29,7 @@ function generateColorFromText(text: string): string {
   return `hsl(${hue}, 70%, 45%)`;
 }
 
-export function LinkCard({
+function LinkCardInner({
   link, viewMode, isBatchEditMode, isSelected,
   onToggleSelection, onEdit, onDelete, onContextMenu,
   isDraggable = true, authToken, isEditMode = false, onWeightChange,
@@ -214,7 +214,7 @@ export function LinkCard({
       )}
 
       {/* Link content */}
-      <div className={`icon-main flex flex-1 min-w-0 overflow-hidden h-full w-full ${
+      <div className={`icon-main flex flex-1 min-w-0 overflow-hidden h-full w-wrap ${
         isDetailedView ? 'items-center' : 'flex flex-col items-center justify-center gap-1 text-center'
       }`}>
         {isDetailedView ? (
@@ -271,3 +271,6 @@ export function LinkCard({
     </div>
   );
 }
+
+//  memo：书签较多时，父级任何 state 变化不再让全部卡片重渲染
+export const LinkCard = React.memo(LinkCardInner);
