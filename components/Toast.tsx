@@ -66,9 +66,9 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration = 3000, 
   return (
     <div
       className={`
-        flex items-center gap-3 p-4 rounded-lg border shadow-lg transition-all duration-300 max-w-md
+        toast-item flex items-center gap-3 p-3.5 pr-3 rounded-xl border shadow-lg backdrop-blur-sm transition-opacity duration-300 max-w-md
         ${getStyles()}
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
+        ${isVisible ? 'opacity-100' : 'opacity-0'}
       `}
     >
       <div className="flex-shrink-0">
@@ -87,7 +87,6 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration = 3000, 
   );
 };
 
-// Toast容器组件
 export const ToastContainer: React.FC<{ toasts: ToastItem[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => {
   return (
     <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
@@ -106,7 +105,6 @@ export const ToastContainer: React.FC<{ toasts: ToastItem[]; onRemove: (id: stri
   );
 };
 
-// 全局Toast管理器
 class ToastManager {
   private static instance: ToastManager;
   private listeners: Array<(toasts: ToastItem[]) => void> = [];
@@ -162,20 +160,15 @@ class ToastManager {
   }
 }
 
-// Hook to use Toast in components
 export const useToast = () => {
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
 
   React.useEffect(() => {
     const manager = ToastManager.getInstance();
-
-    // 初始化时获取当前状态
     const handler = (currentToasts: ToastItem[]) => {
       setToasts([...currentToasts]);
     };
-
     manager.subscribe(handler);
-
     return () => {
       manager.unsubscribe(handler);
     };
@@ -199,7 +192,6 @@ export const useToast = () => {
   };
 };
 
-// 导出全局实例，用于在非组件中使用
 export const toast = ToastManager.getInstance();
 
 export default Toast;
