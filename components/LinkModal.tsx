@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Loader2, Pin, Wand2, Trash2 } from 'lucide-react';
+import { X, Sparkles, Loader2, Pin, Wand2, Trash2, Globe } from 'lucide-react';
 import { LinkItem, Category, AIConfig, IconSourceType, IconConfig } from '../types';
 import { generateLinkDescription, suggestCategory } from '../services/geminiService';
 import { toast } from './Toast';
@@ -147,6 +147,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [customApiParam, setCustomApiParam] = useState<'URL' | 'DOMAIN'>('URL');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFetchingIcon, setIsFetchingIcon] = useState(false);
+  const [isFetchingMeta, setIsFetchingMeta] = useState(false);
   const [autoFetchIcon, setAutoFetchIcon] = useState(true);
   const [batchMode, setBatchMode] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -424,6 +425,24 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         console.error("AI Assist failed", e);
     } finally {
         setIsGenerating(false);
+    }
+  };
+
+  // 无 AI 时：直接抓取目标网页的 <title> 和 <meta description> 填写
+  const handleFetchMeta = async () => {
+    if (!url) return;
+    setIsFetchingMeta(true);
+    try {
+      const res = await fetch(`/api/metadata?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (data.title && !title.trim()) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      toast.success('已从网页抓取标题与描述');
+    } catch (e) {
+      console.error('Fetch meta failed', e);
+      toast.warning('抓取失败，该网站可能禁止访问');
+    } finally {
+      setIsFetchingMeta(false);
     }
   };
 
@@ -783,15 +802,27 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
             <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-medium dark:text-slate-300">描述 (选填)</label>
                 {(title && url) && (
-                    <button
-                        type="button"
-                        onClick={handleAIAssist}
-                        disabled={isGenerating}
-                        className="text-xs flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
-                    >
-                        {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                        AI 自动填写
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={handleFetchMeta}
+                            disabled={isFetchingMeta}
+                            className="text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                            title="从网页抓取 title 和 meta description"
+                        >
+                            {isFetchingMeta ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+                            抓取描述
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleAIAssist}
+                            disabled={isGenerating}
+                            className="text-xs flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                        >
+                            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                            AI 自动填写
+                        </button>
+                    </div>
                 )}
             </div>
             <textarea
