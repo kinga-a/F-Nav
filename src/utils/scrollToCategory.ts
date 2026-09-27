@@ -24,15 +24,15 @@ export function scrollToCategory(categoryId: string) {
     return window;
   };
 
-  // 顶部留白 = Header 实际渲染高度（动态测量，不写死；手机端含安全区也能算对）
+  // 顶部留白 = Header 实际渲染高度 + 24px 呼吸间距（动态测量，不写死；手机端含安全区也能算对）
   // Header 是 sticky 定位（不是 fixed），不能再用 position === 'fixed' 判断
   const getHeaderOffset = (): number => {
     const header = document.querySelector('header');
     if (header) {
       const h = header.getBoundingClientRect().height;
-      if (h > 0) return h;
+      if (h > 0) return h + 24;
     }
-    return 64;
+    return 64 + 24;
   };
 
   const jump = () => {
