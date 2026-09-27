@@ -31,8 +31,8 @@ export function PinnedSection({
   });
 
   const gridClass = viewMode === 'detailed'
-    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-[repeat(auto-fill,64px)]'
-    : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10';
+    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+    : 'grid-cols-[repeat(auto-fill,112px)]';
 
   return (
     <div>
