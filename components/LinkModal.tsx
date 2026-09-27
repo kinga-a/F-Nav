@@ -154,7 +154,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [weight, setWeight] = useState(0);
   const [pinnedOrder, setPinnedOrder] = useState(0);
   
-  // 当不支持上传时，将图标类型降级为默认
   useEffect(() => {
     if (!supportsUpload && (iconType === 'upload-edgeone' || iconType === 'upload-cloudflare')) {
       setIconType('origin');
@@ -162,7 +161,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   }, [supportsUpload, iconType]);
 
-  // 当模态框关闭时，重置批量模式为默认关闭状态
   useEffect(() => {
     if (!isOpen) {
       setBatchMode(false);
@@ -170,7 +168,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   }, [isOpen]);
   
-  // 成功提示1秒后自动消失
   useEffect(() => {
     if (showSuccessMessage) {
       const timer = setTimeout(() => {
@@ -180,17 +177,14 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   }, [showSuccessMessage]);
 
-  // Helper function to get subcategories of a parent category
   const getSubCategories = (parentId: string) => {
     return categories.filter(cat => cat.parentId === parentId);
   };
 
-  // Helper function to check if a category has subcategories
   const hasSubCategories = (categoryId: string) => {
     return getSubCategories(categoryId).length > 0;
   };
 
-  // Helper function to get category display name with parent
   const getCategoryDisplayName = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
     if (!category) return '未知分类';
@@ -216,7 +210,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         setWeight(initialData.weight || 0);
         setPinnedOrder(initialData.pinnedOrder || 0);
 
-        // 智能还原图标获取方式
         let detectedType: IconSourceType = 'origin';
         if (initialData.iconType) {
           if (initialData.iconType === 'upload') {
@@ -230,7 +223,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           } else if (initialData.icon?.includes('google.com/s2/favicons')) {
             detectedType = 'google';
           } else if (initialData.icon?.includes('/api/favicon?domain=')) {
-            // 兼容旧数据
             detectedType = 'google';
           } else if (initialData.icon?.includes('api.xinac.net/icon')) {
             detectedType = 'xinac';
@@ -244,7 +236,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         }
         setIconType(detectedType);
 
-        // 初始化历史记录状态
         const initialCustom = initialData.customIconUrl || (detectedType === 'customurl' ? initialData.icon : '') || '';
         const initialEdgeone = initialData.edgeoneBlobUrl || (detectedType === 'upload-edgeone' ? initialData.icon : '') || '';
         const initialCloudflare = initialData.cloudflareR2Url || (detectedType === 'upload-cloudflare' ? initialData.icon : '') || '';
@@ -266,11 +257,9 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         setDescription('');
         setWeight(0);
         setPinnedOrder(0);
-        // 如果有默认分类ID，使用它；否则使用第一个可用的分类
         if (defaultCategoryId && categories.find(cat => cat.id === defaultCategoryId)) {
           setCategoryId(defaultCategoryId);
         } else {
-          // 选择第一个可用的分类
           const firstAvailableCategory = categories.find(cat =>
             !cat.isSubcategory ? !hasSubCategories(cat.id) : true
           );
@@ -289,12 +278,11 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   }, [isOpen, initialData, categories, defaultCategoryId]);
 
-  // 当URL变化且启用自动获取图标时，自动获取图标
   useEffect(() => {
     if (url && autoFetchIcon && !initialData) {
       const timer = setTimeout(() => {
         handleFetchIcon();
-      }, 500); // 延迟500ms执行，避免频繁请求
+      }, 500);
       
       return () => clearTimeout(timer);
     }
@@ -302,22 +290,18 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
   const handleDelete = () => {
     if (!initialData) return;
-    // 删除成功提示统一由父组件（AppLayout 的 handleDeleteLink）弹出，这里不再重复提示
     onDelete && onDelete(initialData.id);
     onClose();
   };
 
-  // 缓存自定义图标到KV空间
   const cacheCustomIcon = async (url: string, iconUrl: string) => {
     try {
-      // 提取域名
       let domain = url;
       if (domain.startsWith('http://') || domain.startsWith('https://')) {
         const urlObj = new URL(domain);
         domain = urlObj.hostname;
       }
       
-      // 将自定义图标保存到KV缓存
       const authToken = localStorage.getItem('authToken');
       if (authToken) {
         await fetch('/api/storage', {
@@ -344,13 +328,11 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     
     if (!title || !url) return;
     
-    // 确保URL有协议前缀
     let finalUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       finalUrl = 'https://' + url;
     }
     
-    // 保存链接数据（keepOpen: 批量模式下通知父组件保持弹窗打开）
     onSave({
       id: initialData?.id || '',
       title,
@@ -368,24 +350,18 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       cloudflareR2Url,
       isPrivate
     }, batchMode);
-
-    // 保存成功提示统一由父组件（AppLayout）弹出，这里不再重复提示
-
-    // 如果有自定义图标URL，缓存到KV空间
+    
     if (icon && !icon.startsWith('/api/favicon') && !icon.includes('faviconextractor.com')) {
       cacheCustomIcon(finalUrl, icon);
     }
     
-    // 批量模式下不关闭窗口，只显示成功提示
     if (batchMode) {
       setShowSuccessMessage(true);
-      // 重置表单，但保留分类和批量模式设置
       setTitle('');
       setUrl('');
       setIcon('');
       setDescription('');
       setPinned(false);
-      // 如果开启自动获取图标，尝试获取新图标
       if (autoFetchIcon && finalUrl) {
         handleFetchIcon();
       }
@@ -403,11 +379,9 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
     setIsGenerating(true);
 
-    // Parallel execution for speed
     try {
         const descPromise = generateLinkDescription(title, url, aiConfig);
 
-        // 只有在新建链接时才使用AI建议分类，编辑时保持原有分类
         let catPromise = Promise.resolve(null);
         if (!initialData) {
             catPromise = suggestCategory(title, url, categories, aiConfig);
@@ -416,7 +390,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
         const [desc, cat] = await Promise.all([descPromise, catPromise]);
 
         if (desc) setDescription(desc);
-        // 只有是新建链接且AI生成了分类建议时，才设置分类
         if (cat && !initialData) {
             setCategoryId(cat);
         }
@@ -428,7 +401,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   };
 
-  // 无 AI 时：直接抓取目标网页的 <title> 和 <meta description> 填写
   const handleFetchMeta = async () => {
     if (!url) return;
     setIsFetchingMeta(true);
@@ -455,15 +427,12 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   };
 
-  
   const handleFetchIcon = async () => {
     if (!url) return;
 
     setIsFetchingIcon(true);
     try {
-      // 提取域名
       let domain = url;
-      // 如果URL没有协议前缀，添加https://作为默认协议
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         domain = 'https://' + url;
       }
@@ -475,7 +444,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
       let iconUrl = '';
 
-      // 原站图标优先：探测目标网站的 /favicon.ico，失败则降级 Xinac
       const probeImage = (src: string, timeout = 4000): Promise<boolean> => {
         return new Promise((resolve) => {
           const img = new Image();
@@ -488,7 +456,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
       const xinacUrl = `https://api.xinac.net/icon/?url=${encodeURIComponent(url)}`;
 
-      // 根据选择的图标类型生成图标URL
       switch (iconType) {
         case 'faviconextractor':
           iconUrl = `https://faviconextractor.com/favicon/${domain}`;
@@ -500,7 +467,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           iconUrl = xinacUrl;
           break;
         case 'origin': {
-          // 从原始 URL 提取协议和主机
           let origin = '';
           try {
             const u = new URL(url.startsWith('http') ? url : `https://${url}`);
@@ -529,7 +495,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 my-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700 my-auto pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-between items-start sm:items-center p-4 border-b border-slate-200 dark:border-slate-700 gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-semibold dark:text-white">
@@ -624,13 +590,11 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-slate-300">图标</label>
             <div className="space-y-2">
-              {/* 图标类型选择 */}
               <select
                 value={iconType}
                   onChange={(e) => {
                     const newType = e.target.value as IconSourceType;
                     setIconType(newType);
-                    // 当切换类型时，从历史记录中还原，而不是变成空白！
                     if (newType === 'customurl') {
                       setIcon(customIconUrl);
                     } else if (newType === 'upload-edgeone') {
@@ -655,7 +619,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
                   {supportsUpload && <option value="upload-cloudflare">上传到 Cloudflare R2</option>}
                 </select>
 
-              {/* 图标输入框 - 根据类型显示不同界面 */}
               {iconType === 'customurl' && (
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -886,7 +849,6 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           )}
 
           <div className="pt-2 relative">
-            {/* 成功提示 */}
             {showSuccessMessage && (
               <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 z-10 px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg transition-opacity duration-300">
                 添加成功
