@@ -148,7 +148,7 @@ export function LinkCard({
           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
       } ${isBatchEditMode ? 'cursor-pointer' : isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${
         isDetailedView
-          ? 'flex flex-col rounded-2xl border shadow-sm p-3 h-36 items-center justify-center text-center w-full min-w-0 overflow-hidden'
+          ? 'flex flex-col rounded-2xl border shadow-sm p-3 aspect-square items-center justify-center text-center w-full min-w-0 overflow-hidden'
           : 'flex items-center justify-between rounded-xl border shadow-sm p-3'
       } ${isDragging ? 'shadow-2xl scale-105' : ''}`}
       onClick={handleClick}
