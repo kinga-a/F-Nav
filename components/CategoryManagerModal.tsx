@@ -29,7 +29,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
   onSaveCategories,
   onVerifyPassword
 }) => {
-  // 本地编辑状态 - 不直接修改原始数据
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,21 +56,14 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     categoryName: string;
   } | null>(null);
 
-  // 删除分类时记录需要把书签到移到 common 的分类 id 集合（保存时统一一次性提交）
   const migrateIdsRef = useRef<Set<string>>(new Set());
 
-  // 关闭时延迟卸载，保留淡出动画
   const [mounted, setMounted] = useState(isOpen);
   const [closing, setClosing] = useState(false);
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
-      // 先以隐藏态挂载，下一帧再切到显示态，enter 过渡才有起点
-      setClosing(true);
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => setClosing(false));
-      });
-      return () => cancelAnimationFrame(raf);
+      setClosing(false);
     } else if (mounted) {
       setClosing(true);
       const t = setTimeout(() => { setMounted(false); setClosing(false); }, 200);
@@ -89,12 +81,10 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
 
   if (!mounted) return null;
 
-  // 获取顶级分类
   const getTopLevelCategories = () => {
     return localCategories.filter(cat => !cat.isSubcategory && !cat.parentId);
   };
 
-  // 获取可选择的父分类
   const getParentOptions = (excludeId?: string) => {
     return localCategories.filter(cat => {
       if (cat.id === excludeId) return false;
@@ -112,13 +102,11 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     });
   };
 
-  // 标记有改动
   const markChanged = (newCats: Category[]) => {
     setLocalCategories(newCats);
     setHasChanges(true);
   };
 
-  // 排序：交换相邻同级分类的 weight 值
   const handleMove = (categoryId: string, direction: 'up' | 'down') => {
     const cat = localCategories.find(c => c.id === categoryId);
     if (!cat) return;
@@ -134,7 +122,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
 
     const target = direction === 'up' ? siblings[siblingIndex - 1] : siblings[siblingIndex + 1];
 
-    // 交换 weight
     const newCats = localCategories.map(c => {
       if (c.id === cat.id) return { ...c, weight: target.weight ?? 0 };
       if (c.id === target.id) return { ...c, weight: cat.weight ?? 0 };
@@ -143,11 +130,9 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     markChanged(newCats);
   };
 
-  // 保存到服务器（按 weight 排序）
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // 分别对一级分类和二级分类按 weight 排序
       const topLevel = localCategories
         .filter(c => !c.isSubcategory && !c.parentId)
         .sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
@@ -155,18 +140,15 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         .filter(c => c.isSubcategory || c.parentId)
         .sort((a, b) => (a.weight ?? 0) - (b.weight ?? 0));
 
-      // 合并：一级分类后紧跟其子分类
       const sorted: Category[] = [];
       for (const cat of topLevel) {
         sorted.push(cat);
         const children = subs.filter(s => s.parentId === cat.id);
         sorted.push(...children);
       }
-      // 没有父分类的子分类（孤儿）
       const orphans = subs.filter(s => !topLevel.some(t => t.id === s.parentId));
       sorted.push(...orphans);
 
-      // 把待删除分类下的书签统一迁到 common，与分类变更一次性提交，避免两次写云产生竞态
       const migrateIds = migrateIdsRef.current;
       const finalLinks = migrateIds.size > 0
         ? links.map(l => migrateIds.has(l.categoryId) ? { ...l, categoryId: 'common' } : l)
@@ -188,7 +170,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     }
   };
 
-  // 密码验证
   const handlePasswordVerification = async (password: string): Promise<boolean> => {
     if (!onVerifyPassword) return true;
     try {
@@ -208,7 +189,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
     setIsAuthModalOpen(true);
   };
 
-  // 收集某分类及其所有子孙分类 id（删除父分类时整棵子树一起处理）
   const collectSelfAndDescendants = (catId: string, list: Category[]): Set<string> => {
     const ids = new Set<string>([catId]);
     let changed = true;
@@ -233,7 +213,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
         : `确定删除"${cat.name}"及其子分类吗？`;
       if (confirm(msg)) {
         const newCats = localCategories.filter(c => !idsToRemove.has(c.id));
-        // 记录待迁移的分类 id，保存时统一处理（避免分两次写造成竞态）
         migrateIdsRef.current = new Set([...migrateIdsRef.current, ...idsToRemove]);
         markChanged(newCats);
       }
@@ -340,8 +319,8 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
 
   return (
     <>
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}>
-        <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85dvh] transition-all duration-200 ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${!closing ? 'modal-overlay' : ''} ${closing ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85dvh] transition-all duration-200 ${!closing ? 'modal-panel' : ''} ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
           <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold dark:text-white">
               分类管理
@@ -499,7 +478,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             })()}
           </div>
 
-          {/* 添加新分类 */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">添加新分类</label>
             <div className="flex flex-col gap-2">
@@ -553,7 +531,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             </div>
           </div>
 
-          {/* 底部保存/取消按钮 */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
             <button
               onClick={onClose}
@@ -571,7 +548,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             </button>
           </div>
 
-          {/* 图标选择器 */}
           {isIconSelectorOpen && (
             <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80dvh] overflow-hidden flex flex-col">
@@ -594,7 +570,6 @@ const CategoryManagerModal: React.FC<CategoryManagerModalProps> = ({
             </div>
           )}
 
-          {/* 密码验证弹窗 */}
           {isAuthModalOpen && pendingAction && (
             <CategoryActionAuthModal
               isOpen={isAuthModalOpen}
