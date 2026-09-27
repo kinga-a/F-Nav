@@ -91,7 +91,7 @@ export function MainContent({
 
   if (searchQuery.trim() && isInternal) {
     return (
-      <main className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
         <section>
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-4">
             搜索结果
@@ -147,7 +147,7 @@ export function MainContent({
         }
       }}
     >
-      <main className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-8">
         {showPinnedWebsites && pinnedLinks.length > 0 && (
           <section id="cat-pinned">
             <PinnedSection
