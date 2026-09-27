@@ -215,7 +215,7 @@ export function LinkCard({
 
       {/* Link content */}
       <div className={`icon-main flex flex-1 min-w-0 overflow-hidden h-full w-full ${
-        isDetailedView ? 'items-center' : 'flex flex-col items-center justify-center gap-2 text-center'
+        isDetailedView ? 'items-center' : 'flex flex-col items-center justify-center gap-1 text-center'
       }`}>
         {isDetailedView ? (
           <>
@@ -242,15 +242,15 @@ export function LinkCard({
         ) : (
           <>
             <div className="relative shrink-0">
-              <div className="flex items-center justify-center text-xs font-bold uppercase w-12 h-12 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
+              <div className="flex items-center justify-center text-[10px] font-bold uppercase w-10 h-10 rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-800 shadow-sm"
                 style={{ color: fallbackColor }}>
-                {iconSrc ? <img src={iconSrc} alt="" className="w-7 h-7" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
+                {iconSrc ? <img src={iconSrc} alt="" className="w-6 h-6" loading="lazy" onError={handleIconError} /> : link.title.charAt(0).toUpperCase()}
               </div>
               {link.isPrivate && (
                 <span className="absolute -top-0.5 -right-0.5 text-[10px] leading-none" title="私人书签">🔒</span>
               )}
             </div>
-            <h3 className="w-full min-w-0 text-slate-800 dark:text-slate-200 text-xs font-medium leading-snug overflow-hidden line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
+            <h3 className="w-full min-w-0 text-slate-800 dark:text-slate-200 text-[10px] font-medium leading-tight overflow-hidden whitespace-nowrap text-ellipsis group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={link.title}>
               {link.title}
             </h3>
           </>
