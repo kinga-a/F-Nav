@@ -64,16 +64,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [migrating, setMigrating] = useState(false);
   const [mastodonInput, setMastodonInput] = useState('');
 
-  // ===== TOTP 两步验证 =====
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [totpStage, setTotpStage] = useState<'idle' | 'setup'>('idle');
   const [totpSecret, setTotpSecret] = useState('');
   const [totpOtpauth, setTotpOtpauth] = useState('');
   const [totpCode, setTotpCode] = useState('');
-  const [totpRecovery, setTotpRecovery] = useState(''); // 激活成功后仅显示一次
+  const [totpRecovery, setTotpRecovery] = useState('');
   const [totpBusy, setTotpBusy] = useState(false);
 
-  // 打开面板时查询两步验证状态
   useEffect(() => {
     if (isOpen) {
       setTotpStage('idle');
@@ -170,19 +168,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const fetchSettings = async () => {
       setLoading(true);
       try {
-        // 1. Try to fetch new config key
         let res = await fetch('/api/storage?key=config');
         let data = res.ok ? await res.json() : null;
 
         if (data?.value) {
-          // Mapping AppConfig to SettingsData structure
           const appConfig = JSON.parse(data.value);
           
-          // Ensure providers map exists
           const aiConfig = appConfig.ai || DEFAULT_SETTINGS.ai;
           if (!aiConfig.providers) {
             aiConfig.providers = { ...DEFAULT_SETTINGS.ai.providers };
-            // Migration: put current active settings into the map
             if (aiConfig.provider && aiConfig.providers[aiConfig.provider]) {
               aiConfig.providers[aiConfig.provider] = {
                 apiKey: aiConfig.apiKey || '',
@@ -273,7 +267,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setSettings(prev => {
       const newAi = { ...prev.ai, [key]: value };
       
-      // If updating provider, load stored settings for new provider
       if (key === 'provider') {
         const provider = value as keyof typeof AI_MODELS;
         const stored = newAi.providers?.[provider];
@@ -282,7 +275,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           newAi.baseUrl = stored.baseUrl;
           newAi.model = stored.model;
         } else {
-          // Fallback to defaults if no stored config
           const defaults = AI_MODELS[provider];
           if (defaults) {
             newAi.apiKey = '';
@@ -291,7 +283,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           }
         }
       } 
-      // If updating specific field, sync with providers map
       else if (['apiKey', 'baseUrl', 'model'].includes(key as string)) {
         const provider = newAi.provider;
         if (!newAi.providers) newAi.providers = {};
@@ -339,8 +330,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
-        {/* Header */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90dvh]">
         <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Settings size={20} /> 设置面板
@@ -355,7 +345,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto min-h-[300px]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -364,7 +353,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           ) : (
             <>
-              {/* 浏览器标签标题 */}
               <section>
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <Settings size={16} /> 浏览器标签标题设置
@@ -391,7 +379,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 密码过期 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <Clock size={16} /> 密码过期时间
@@ -407,7 +394,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 搜索设置 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <Search size={16} /> 搜索设置
@@ -455,7 +441,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 默认视图模式 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <LayoutGrid size={16} /> 默认视图模式
@@ -466,7 +451,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 两步验证（TOTP） */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <ShieldCheck size={16} /> 两步验证（TOTP）
@@ -569,7 +553,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
               </section>
 
-              {/* 置顶网站 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <LayoutGrid size={16} /> 置顶网站
@@ -580,7 +563,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
               </section>
 
-              {/* 图标自托管与缓存 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <LayoutGrid size={16} /> 图标自托管与缓存
@@ -614,7 +596,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
               </section>
 
-              {/* 滚动 Ticker */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <MessageCircle size={16} /> 滚动 Ticker
@@ -637,7 +618,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </select>
                       </div>
 
-                      {/* Mastodon 配置 */}
                       {settings.ticker.source === 'mastodon' && (
                         <div className="space-y-3">
                           <div>
@@ -661,7 +641,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       )}
 
-                      {/* Memos 配置 */}
                       {settings.ticker.source === 'memos' && (
                         <div className="space-y-3">
                           <div>
@@ -714,7 +693,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   </div>
 )}
 
-                      {/* 自定义配置 */}
                       {settings.ticker.source === 'custom' && (
                         <div className="space-y-2">
                           <label className="block text-xs font-medium text-slate-500 mb-1">自定义内容</label>
@@ -741,7 +719,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 天气设置 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <Cloud size={16} /> 天气设置
@@ -826,7 +803,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1">Location Key</label>
-                            <input type="text" value={settings.weather.accuweatherLocationKey || ''} onChange={(e) => update('weather', { ...settings.weather, accuweatherLocationKey: e.target.value })} className="w-full h-11 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                            <input type="text" value={settings.weather.accuweatherLocation || ''} onChange={(e) => update('weather', { ...settings.weather, accuweatherLocation: e.target.value })} className="w-full h-11 px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
                           </div>
                         </div>
                       )}
@@ -843,7 +820,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* AI 配置 */}
               <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                   <BookOpen size={16} /> AI 配置
@@ -879,16 +855,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </section>
 
-              {/* 网站内容管理 */}
               {authToken && (
                 <section className="pt-6 border-t border-slate-200 dark:border-slate-700">
                   <h4 className="font-bold dark:text-white mb-3 text-sm flex items-center gap-2">
                     <CloudCog size={16} /> 网站内容管理
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
-                   {/* <button onClick={onImportClick} className="flex flex-col items-center justify-center gap-2 p-3 text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 rounded-lg border border-slate-200 dark:border-slate-600 transition-all">
-                      <Upload size={18} /><span>导入书签</span>
-                    </button> */}
                     <button onClick={onBackupClick} className="flex flex-col items-center justify-center gap-2 p-3 text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 rounded-lg border border-slate-200 dark:border-slate-600 transition-all">
                       <CloudCog size={18} /><span>备份恢复</span>
                     </button>
@@ -899,7 +871,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">取消</button>
           <button onClick={handleSave} disabled={loading || saving} className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors flex items-center gap-2 font-medium">
