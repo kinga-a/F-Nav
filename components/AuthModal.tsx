@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, ArrowRight, Loader2, X } from 'lucide-react';
 import { toast } from './Toast';
 
@@ -9,13 +9,29 @@ interface AuthModalProps {
   totpEnabled?: boolean;
 }
 
+const EXIT_MS = 200;
+
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEnabled = false }) => {
   const [password, setPassword] = useState('');
   const [totp, setTotp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
+  // 关闭时延迟卸载，保留淡出动画
+  const [mounted, setMounted] = useState(isOpen);
+  const [closing, setClosing] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      setClosing(false);
+    } else if (mounted) {
+      setClosing(true);
+      const t = setTimeout(() => { setMounted(false); setClosing(false); }, EXIT_MS);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, mounted]);
+
+  if (!mounted) return null;
 
   const handleLogin = async () => {
     if (!password || isLoading) return;
@@ -50,9 +66,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEna
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-700 relative">
-        {/* 关闭按钮 */}
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-opacity duration-200 ${closing ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-700 relative transition-all duration-200 ${closing ? 'opacity-0 translate-y-3 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
         <button
           type="button"
           onClick={onClose}
