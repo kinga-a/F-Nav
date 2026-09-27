@@ -53,19 +53,20 @@ export async function onRequest(context) {
       return jsonResponse({ error: `fetch failed: ${res.status}` }, 502, corsHeaders);
     }
 
-    // 只取前 200KB 足够解析 head
-    const reader = res.body.getReader();
+    // 读取前 200KB，用流式 TextDecoder 正确拼接
+    const decoder = new TextDecoder('utf-8');
+    let html = '';
     let received = 0;
-    const chunks = [];
+    const reader = res.body.getReader();
     while (received < 200000) {
       const { done, value } = await reader.read();
       if (done) break;
-      chunks.push(value);
+      html += decoder.decode(value, { stream: true });
       received += value.length;
     }
+    html += decoder.decode();
     reader.cancel();
 
-    const html = new TextDecoder('utf-8', { fatal: false }).concat(new Uint8Array(chunks));
     const headEnd = html.toLowerCase().indexOf('</head>');
     const head = headEnd >= 0 ? html.slice(0, headEnd) : html.slice(0, 200000);
 
