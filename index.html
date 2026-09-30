@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" type="image/x-icon" href="https://pan.y11.fun/api/images/fnav_favicon.png">
+<link rel="apple-touch-icon" href="https://pan.y11.fun/api/images/fnav_favicon.png">
+<title>Fnav</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    /* 主色调 柔和靛蓝紫，低饱和高级感 */
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-light: rgba(99, 102, 241, 0.12);
+    /* 状态色 低饱和不刺眼 */
+    --danger: #ef4444;
+    --danger-light: rgba(239, 68, 68, 0.15);
+    --success: #10b981;
+    --success-light: rgba(16, 185, 129, 0.12);
+    --warning: #f59e0b;
+    --warning-light: rgba(245, 158, 11, 0.12);
+    /* 中性背景体系 柔和渐变灰白 */
+    --bg: #f7f8fc;
+    --bg-subtle: #f1f3f9;
+    --card-bg: #ffffff;
+    /* 侧边栏深色 柔和深蓝灰，非纯黑 */
+    --sidebar-bg: #273044;
+    --sidebar-bg-hover: rgba(255,255,255,0.06);
+    --sidebar-text: #d1d9e9;
+    --sidebar-muted: #94a3b8;
+    /* 文字层级 */
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    /* 边框统一低透明度 */
+    --border: #e2e8f0;
+    --border-subtle: rgba(226, 232, 240, 0.6);
+    /* 轻量化阴影体系 */
+    --shadow: 0 1px 4px rgba(0,0,0,0.04);
+    --shadow-modal: 0 4px 16px rgba(0,0,0,0.07);
+    --shadow-lg: 0 12px 28px -6px rgba(0,0,0,0.06);
+    --shadow-fab: 0 4px 12px rgba(99, 102, 241, 0.22);
+    /* 圆角梯度规范 */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 18px;
+    --radius-full: 9999px;
+  }
+  html {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg-subtle) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    overscroll-behavior-y: auto;
+  }
+  /* ===== 弹窗/侧边栏打开时锁定 body 滚动 ===== */
+  body.locked {
+    overflow: hidden !important;
+    touch-action: none;
+  }
+  body.locked .main-content {
+    pointer-events: none;
+  }
+  .app-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 260px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    z-index: 1000;
+    overflow-y: auto;
+    padding: 1.5rem 1rem;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 999;
+    opacity: 0; visibility: hidden;
+    transition: all 0.3s ease;
+    touch-action: none;
+  }
+  .sidebar-overlay.open { opacity: 1; visibility: visible; }
+  .sidebar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-title { font-size: 1.25rem; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
+  .sidebar-close {
+    background: none; border: none; color: var(--sidebar-muted);
+    font-size: 1.5rem; cursor: pointer; padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+  }
+  .sidebar-close:hover { color: #fff; background: var(--sidebar-bg-hover); }
+  .nav-section { margin-bottom: 1.5rem; }
+  .nav-label-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 0.75rem;
+    padding-left: 0.75rem;
+  }
+  .nav-label {
+    font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--sidebar-muted);
+  }
+  .cat-add-btn {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: var(--sidebar-muted);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s ease;
+    align-self: center;
+  }
+  .cat-add-btn:hover {
+    background: var(--primary);
+    color: #fff;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 0.9375rem;
+  }
+  .nav-item:hover, .nav-item.active {
+    background: var(--sidebar-bg-hover);
+    color: #fff;
+  }
+  .nav-item.active {
+    border-left: 3px solid var(--primary);
+  }
+  .nav-item .icon { width: 20px; text-align: center; }
+  .nav-item .count {
+    margin-left: auto;
+    background: rgba(255,255,255,0.08);
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+  }
+  .category-list { margin-left: 0.5rem; }
+  .category-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    border-radius: var(--radius-md);
+    cursor: grab;
+    font-size: 0.875rem;
+    color: var(--sidebar-text);
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+  .category-item:active { cursor: grabbing; }
+  .category-item:hover, .category-item.active {
+    color: #fff;
+    background: var(--sidebar-bg-hover);
+  }
+  .category-item .cat-color {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cat-text { flex:1; white-space: nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cat-count { font-size: 0.75rem; opacity: 0.6; margin-right:4px; }
+  .cat-del-btn {
+    background: transparent; border:none; color:var(--sidebar-muted);
+    width:18px; height:18px; border-radius:var(--radius-sm);
+    font-size:14px; cursor:pointer; display:none;
+    transition: all 0.2s;
+  }
+  .category-item:hover .cat-del-btn { display:block; }
+  .cat-del-btn:hover { background:var(--danger-light); color:var(--danger); }
+
+  .main-content {
+    flex: 1;
+    margin-left: 0;
+    transition: margin-left 0.3s;
+    min-height: 100vh;
+  }
+  .top-bar {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 1.1rem 24px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .menu-btn {
+    background: none; border: none;
+    font-size: 1.5rem; cursor: pointer;
+    color: var(--text); padding: 0.25rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+  }
+  .menu-btn:hover { background: var(--bg-subtle); }
+  .search-box {
+    flex: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 0.625rem 1rem 0.625rem 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    background: var(--bg-subtle);
+    transition: all 0.2s ease;
+  }
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    background: #fff;
+  }
+  .search-box .search-icon {
+    position: absolute;
+    left: 0.875rem; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .top-actions {
+    display: flex; gap: 0.5rem;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem; font-weight: 500;
+    cursor: pointer; border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+  }
+  .btn-primary:hover { 
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg-subtle); color: var(--text); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+  .content-area {
+    padding: 2rem 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+  }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .section-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+  .section-desc { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
+
+  #bookmarkGrid {
+    display: block;
+  }
+  .bookmark-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 32px;
+    transition: all 0.3s ease;
+  }
+  .bookmark-grid.hidden {
+    display: none;
+    opacity: 0;
+    height: 0;
+    margin-bottom: 0;
+  }
+  .category-group-title {
+    margin: 32px 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .category-group-title:first-child {
+    margin-top: 0;
+  }
+  /* ===== 核心修改：dot 改为可点击的折叠按钮 ===== */
+  .category-group-title .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+    /* 默认展开状态：无黑色边缘 */
+    box-shadow: none;
+  }
+  /* 折叠状态：添加黑色边缘 */
+  .category-group-title .dot.folded {
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.55);
+  }
+  .category-group-title .dot:hover {
+    transform: scale(1.25);
+  }
+  .category-group-title .count-text {
+    font-size:13px;color:var(--text-muted);font-weight:normal;
+  }
+
+  .bookmark-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.6rem;
+    box-shadow: var(--shadow);
+    transition: all 0.25s ease;
+    position: relative;
+    cursor: pointer;
+  }
+  .bookmark-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+  }
+  .bookmark-card.pinned {
+    border-left: 4px solid var(--warning);
+  }
+  .bookmark-card.private {
+    border-left: 4px solid var(--primary);
+  }
+  .bookmark-card.private-locked {
+    border-left: 4px solid var(--danger);
+    opacity: 0.7;
+    cursor: default;
+  }
+  .bookmark-card.private-locked .card-title,
+  .bookmark-card.private-locked .card-desc,
+  .bookmark-card.private-locked .card-link {
+    filter: blur(4px);
+    user-select: none;
+  }
+  .card-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .card-title {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--text); word-break: break-word;
+    padding-right: 0.5rem;
+  }
+  .card-badges { display: flex; gap: 0.375rem; flex-shrink: 0; }
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-full);
+    font-size: 0.5rem; font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-pinned { background: var(--warning-light); color: #92400e; }
+  .badge-private { background: var(--primary-light); color: #3730a3; }
+  .badge-category {
+    background: var(--bg-subtle);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+  }
+  .card-desc {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-link {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    color: var(--primary);
+    font-size: 0.7rem; font-weight: 500;
+    text-decoration: none;
+    word-break: break-all;
+  }
+  .card-link:hover { text-decoration: underline; }
+  .card-actions {
+    display: flex; gap: 0.375rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .bookmark-card:hover .card-actions { opacity: 1; }
+  .card-actions button {
+    background: none; border: none;
+    color: var(--text-muted);
+    cursor: pointer; padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+  }
+  .card-actions button:hover { background: var(--bg-subtle); color: var(--text); }
+  .card-actions button.delete:hover { color: var(--danger); background: var(--danger-light); }
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    width:100%;
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.7; }
+  .empty-state h3 { font-size: 1.25rem; color: var(--text); margin-bottom: 0.5rem; }
+
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden;
+    transition: all 0.3s ease;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    /* ===== 防止弹窗上的触摸事件穿透到 body ===== */
+    overscroll-behavior: contain;
+    touch-action: none;
+  }
+  .modal-overlay.open { opacity: 1; visibility: visible; }
+  /* 修复核心：弹窗改为垂直弹性布局，头部底部固定，中间滚动 */
+  .modal {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    width: 90%; max-width: 500px;
+    max-height: min(82vh, calc(100vh - 60px));
+    box-shadow: var(--shadow-modal);
+    transform: scale(0.96);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* ===== 弹窗内部允许滚动，阻止事件冒泡到 body ===== */
+    overscroll-behavior: contain;
+    touch-action: auto;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .modal-title { font-size: 1.125rem; font-weight: 600; color: var(--text); }
+  .modal-close {
+    background: none; border: none;
+    font-size: 1.5rem; color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: var(--bg-subtle); color: var(--text); }
+  /* 表单区域单独滚动 */
+  .modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    /* ===== 弹窗内部滚动区域阻止事件穿透 ===== */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-label {
+    display: block;
+    font-size: 0.875rem; font-weight: 500;
+    margin-bottom: 0.375rem;
+  }
+  .form-label .required { color: var(--danger); }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    background: var(--bg-subtle);
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    background: #fff;
+  }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-hint { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .checkbox-group {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+  .checkbox-group input[type="checkbox"] {
+    width: 1.125rem; height: 1.125rem;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .checkbox-group label { cursor: pointer; font-size: 0.875rem; }
+  /* 底部按钮固定不滚动 */
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    display: flex; justify-content: flex-end; gap: 0.75rem;
+    border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+  .auth-modal .modal { max-width: 400px; text-align: center; }
+  .auth-modal .modal-body { padding: 2rem; }
+  .auth-icon { font-size: 3rem; margin-bottom: 1rem; color: var(--primary); }
+  .auth-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .auth-desc { color: var(--text-muted); margin-bottom: 1.5rem; }
+  .auth-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    background: var(--bg-subtle);
+    transition: all 0.2s;
+  }
+  .auth-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    background: #fff;
+  }
+  .auth-error {
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    min-height: 1.25rem;
+  }
+  .toast-container {
+    position: fixed;
+    bottom: max(1.5rem, env(safe-area-inset-bottom) + 16px);
+    right: 1.5rem;
+    z-index: 3000;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .toast {
+    background: var(--card-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1.25rem;
+    box-shadow: var(--shadow-modal);
+    display: flex; align-items: center; gap: 0.75rem;
+    animation: slideIn 0.3s ease;
+    min-width: 280px;
+  }
+  .toast.success { border-left: 4px solid var(--success); }
+  .toast.error { border-left: 4px solid var(--danger); }
+  .toast.info { border-left: 4px solid var(--primary); }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .loading-spinner {
+    display: inline-block;
+    width: 1.5rem; height: 1.5rem;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fab-add-bookmark {
+    position: fixed;
+    right: 24px;
+    bottom: max(24px, env(safe-area-inset-bottom) + 8px);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    box-shadow: var(--shadow-fab);
+    cursor: pointer;
+    z-index: 900;
+    transition: all 0.25s ease;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .fab-add-bookmark:hover {
+    filter: brightness(1.08);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(79,70,229,0.28);
+  }
+  .fab-add-bookmark:active {
+    transform: translateY(0);
+  }
+input,
+textarea,
+select {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+@supports (-webkit-touch-callout: none) {
+  .form-hint {
+    font-size: 14px;
+  }
+}
+  @media (max-width: 768px) {
+    .bookmark-grid { 
+      grid-template-columns: 1fr 1fr; 
+      gap: 0.6rem;
+      margin-bottom:20px;
+    }
+    .bookmark-card {
+      padding: 0.9rem;
+      border-radius: var(--radius-md);
+    }
+    .card-title {
+      font-size: 0.8rem;
+    }
+    .card-desc {
+      font-size: 0.7rem;
+      -webkit-line-clamp: 1;
+      margin-bottom: 0.5rem;
+    }
+    .card-link {
+      font-size: 0.7rem;
+    }
+    .badge {
+      font-size: 0.5rem;
+      padding: 0.1rem 0.3rem;
+    }
+    .top-bar { padding: 0.75rem 1rem; }
+    .search-box { max-width: none; }
+    .content-area { padding: 1.2rem 16px; }
+    .section-title { font-size: 1.25rem; }
+    /* 移动端弹窗加宽底部安全区 */
+    .modal-overlay {
+      padding: max(12px, env(safe-area-inset-top)) 12px max(40px, env(safe-area-inset-bottom));
+    }
+    .modal-footer {
+      padding: 0.8rem 1rem;
+    }
+    .modal-header {
+      padding: 1rem 1rem;
+    }
+    .modal-body {
+      padding: 1rem;
+    }
+  }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div id="app">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">📚 书签管理</span>
+      <button class="sidebar-close" onclick="app.toggleSidebar()">&times;</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">视图</div>
+      <a class="nav-item" data-view="all" onclick="app.setView('all')">
+        <span class="icon">🏠</span> 全部书签
+        <span class="count" id="countAll">0</span>
+      </a>
+      <a class="nav-item" data-view="pinned" onclick="app.setView('pinned')">
+        <span class="icon">📌</span> 置顶书签
+        <span class="count" id="countPinned">0</span>
+      </a>
+      <a class="nav-item" data-view="private" onclick="app.setView('private')" id="navPrivate" style="display:none">
+        <span class="icon">🔒</span> 私有书签
+        <span class="count" id="countPrivate">0</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label-wrap">
+        <span class="nav-label">分类（可拖动排序）</span>
+        <button class="cat-add-btn" id="addCategoryBtn" onclick="app.showAddCategory()">+</button>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+    </div>
+    <div class="nav-section" style="margin-top: auto; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.08);">
+      <div class="nav-item" onclick="app.toggleAuth()">
+        <span class="icon" id="authIcon">🔓</span>
+        <span id="authStatus">未验证</span>
+      </div>
+    </div>
+  </aside>
+  <div class="main-content">
+    <div class="top-bar">
+      <button class="menu-btn" onclick="app.toggleSidebar()">☰</button>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索书签标题、链接、描述..." oninput="app.handleSearch(this.value)">
+      </div>
+      <div class="top-actions" id="topActions"></div>
+    </div>
+    <div class="content-area">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title" id="pageTitle">全部书签</h1>
+          <p class="section-desc" id="pageDesc">浏览所有书签</p>
+        </div>
+      </div>
+      <div id="bookmarkGrid"></div>
+    </div>
+  </div>
+</div>
+<button class="fab-add-bookmark" id="fabAddBtn" onclick="app.showAddModal()">+</button>
+<div class="modal-overlay" id="bookmarkModal" onclick="app.closeModalByOverlay(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle">新建书签</h3>
+      <button class="modal-close" onclick="app.closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="bookmarkForm" onsubmit="app.saveBookmark(event)">
+        <input type="hidden" id="bookmarkId">
+        <div class="form-group">
+          <label class="form-label">标题 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="formTitle" required placeholder="输入书签标题">
+        </div>
+        <div class="form-group">
+          <label class="form-label">链接 <span class="required">*</span></label>
+          <input type="url" class="form-input" id="formUrl" required placeholder="https://example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">描述</label>
+          <textarea class="form-textarea" id="formDesc" placeholder="可选：添加描述..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分类</label>
+          <select class="form-select" id="formCategory"></select>
+          <div class="form-hint">如需新增分类，请在侧边栏分类旁「+」</div>
+        </div>
+        <div class="form-row">
+          <div class="checkbox-group">
+            <input type="checkbox" id="formPinned">
+            <label for="formPinned">📌 置顶</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="formPrivate">
+            <label for="formPrivate">🔒 私有</label>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="app.closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="app.saveBookmark()">保存</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay auth-modal" id="authModal" onclick="app.closeAuthModalByOverlay(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-body">
+      <div class="auth-icon">🔐</div>
+      <h3 class="auth-title">访问私有书签</h3>
+      <p class="auth-desc">请输入密码以查看私有书签内容</p>
+      <input type="password" class="auth-input" id="authPassword" placeholder="输入密码" onkeydown="if(event.key==='Enter')app.doAuth()">
+      <div class="auth-error" id="authError"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="app.doAuth()">验证</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="categoryModal" onclick="app.closeCategoryModalByOverlay(event)">
+  <div class="modal" style="max-width: 400px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">新建分类</h3>
+      <button class="modal-close" onclick="app.closeCategoryModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">分类名称</label>
+        <input type="text" class="form-input" id="newCategoryName" placeholder="输入分类名称" onkeydown="if(event.key==='Enter')app.addCategory()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="app.closeCategoryModal()">取消</button>
+      <button class="btn btn-primary" onclick="app.addCategory()">创建</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="deleteModal" onclick="app.closeDeleteModalByOverlay(event)">
+  <div class="modal" style="max-width: 400px;" onclick="event.stopPropagation()">
+    <div class="modal-body" style="text-align:center; padding: 2rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--danger);">🗑️</div>
+      <h3 style="margin-bottom: 0.5rem;">确认删除?</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">此操作无法撤销</p>
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button class="btn btn-ghost" onclick="app.closeDeleteModal()">取消</button>
+        <button class="btn btn-danger" onclick="app.confirmDelete()">删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+<script>
+const API_BASE = '/api';
+class BookmarkApp {
+  constructor() {
+    this.bookmarks = [];
+    this.categories = [];
+    this.currentView = 'all';
+    this.searchQuery = '';
+    this.isAuthenticated = false;
+    this.authToken = localStorage.getItem('bookmark_auth') || '';
+    this.deleteTarget = null;
+    this.sidebarOpen = false;
+    this.dragItem = null;
+    this.foldState = {};
+    this._bodyScrollTop = 0;
+    this._lockCount = 0;
+    if (this.authToken) this.isAuthenticated = true;
+    this.init();
+  }
+  async init() {
+    await this.loadData();
+    this.renderCategories();
+    this.renderBookmarks();
+    this.updateAuthUI();
+    document.getElementById('sidebarOverlay').addEventListener('click', () => this.toggleSidebar());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeModal(); this.closeAuthModal(); this.closeCategoryModal(); this.closeDeleteModal();
+        if (this.sidebarOpen) this.toggleSidebar();
+      }
+      if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('searchInput').focus(); }
+      if (e.ctrlKey && e.key === 'n') { e.preventDefault(); this.showAddModal(); }
+    });
+    // ===== iOS 侧边栏和弹窗触摸穿透防护 =====
+    this._setupTouchIsolation();
+  }
+  /* ===== 统一触摸隔离：阻止侧边栏/弹窗上的 touchmove 冒泡到 body ===== */
+  _setupTouchIsolation() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const overlays = document.querySelectorAll('.modal-overlay');
+
+    // ===== 阻止滚轮事件穿透（PC + 安卓）=====
+    const preventWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    // 侧边栏遮罩层：阻止所有滚轮/触摸事件穿透到 body
+    sidebarOverlay.addEventListener('wheel', preventWheel, { passive: false });
+    sidebarOverlay.addEventListener('touchmove', preventWheel, { passive: false });
+
+    // 侧边栏本身：阻止滚轮事件冒泡到 body（但保留内部滚动）
+    sidebar.addEventListener('wheel', (e) => {
+      const isAtTop = sidebar.scrollTop <= 0;
+      const isAtBottom = sidebar.scrollTop + sidebar.clientHeight >= sidebar.scrollHeight;
+      const deltaY = e.deltaY;
+      // 如果滚动到边界且继续向同方向滚动，阻止默认行为（防止穿透）
+      if ((isAtTop && deltaY < 0) || (isAtBottom && deltaY > 0)) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    }, { passive: false });
+
+    // 侧边栏触摸不穿透
+    sidebar.addEventListener('touchmove', (e) => {
+      e.stopPropagation();
+    }, { passive: false });
+
+    // 弹窗遮罩层滑动不穿透
+    overlays.forEach(overlay => {
+      overlay.addEventListener('touchmove', (e) => {
+        if (e.target === overlay) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+      }, { passive: false });
+      // 弹窗遮罩层也阻止滚轮
+      overlay.addEventListener('wheel', preventWheel, { passive: false });
+    });
+
+    // 弹窗内容区域滑动不穿透到 body
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('touchmove', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+      modal.addEventListener('wheel', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+    });
+
+    // 弹窗 body 区域滑动不穿透（处理 iOS 橡皮筋效果）
+    document.querySelectorAll('.modal-body').forEach(body => {
+      body.addEventListener('touchmove', (e) => {
+        const scrollTop = body.scrollTop;
+        const scrollHeight = body.scrollHeight;
+        const clientHeight = body.clientHeight;
+        const isAtTop = scrollTop <= 0;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight;
+        const deltaY = e.touches[0].clientY - (this._lastTouchY || e.touches[0].clientY);
+        this._lastTouchY = e.touches[0].clientY;
+        if ((isAtTop && deltaY > 0) || (isAtBottom && deltaY < 0)) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+      }, { passive: false });
+      // 弹窗 body 也阻止滚轮冒泡
+      body.addEventListener('wheel', (e) => {
+        e.stopPropagation();
+      }, { passive: true });
+    });
+  }
+  async loadData() {
+    try {
+      const [bookmarksRes, categoriesRes] = await Promise.all([
+        fetch(API_BASE + '/bookmarks', { headers: this.authHeaders() }),
+        fetch(API_BASE + '/categories')
+      ]);
+      if (bookmarksRes.ok) { const data = await bookmarksRes.json(); this.bookmarks = data.bookmarks || []; }
+      if (categoriesRes.ok) { const data = await categoriesRes.json(); this.categories = data.categories || ['未分类']; }
+    } catch (e) { this.showToast('加载数据失败', 'error'); console.error(e); }
+  }
+  get authHeaders() {
+    return () => {
+      const headers = {
+        "Content-Type": "application/json"
+      };
+      if (this.authToken) {
+        headers["Authorization"] = `Bearer ${this.authToken}`;
+      }
+      return headers;
+    };
+  }
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    document.getElementById('sidebar').classList.toggle('open', this.sidebarOpen);
+    document.getElementById('sidebarOverlay').classList.toggle('open', this.sidebarOpen);
+    if (this.sidebarOpen) {
+      this._lockBodyScroll();
+    } else {
+      this._unlockBodyScroll();
+    }
+  }
+  setView(view) {
+    this.currentView = view;
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+    const viewMap = {
+      'all': { title: '全部书签', desc: '浏览所有书签' },
+      'pinned': { title: '置顶书签', desc: '查看置顶的书签' },
+      'private': { title: '私有书签', desc: '查看私有书签' }
+    };
+    if (viewMap[view]) {
+      document.querySelector(`[data-view="${view}"]`).classList.add('active');
+      document.getElementById('pageTitle').textContent = viewMap[view].title;
+      document.getElementById('pageDesc').textContent = viewMap[view].desc;
+    } else {
+      document.getElementById('pageTitle').textContent = view;
+      document.getElementById('pageDesc').textContent = `${view} 分类下的书签`;
+    }
+    this.renderBookmarks();
+    if (window.innerWidth < 768) this.toggleSidebar();
+  }
+  handleSearch(query) {
+    this.searchQuery = query.toLowerCase().trim();
+    this.renderBookmarks();
+  }
+  getFilteredBookmarks() {
+    let filtered = this.bookmarks;
+    if (this.currentView === 'pinned') filtered = filtered.filter(b => b.pinned);
+    else if (this.currentView === 'private') filtered = filtered.filter(b => b.isPrivate);
+    else if (this.categories.includes(this.currentView)) filtered = filtered.filter(b => b.category === this.currentView);
+    if (this.searchQuery) {
+      filtered = filtered.filter(b =>
+        b.title.toLowerCase().includes(this.searchQuery) ||
+        b.url.toLowerCase().includes(this.searchQuery) ||
+        (b.description && b.description.toLowerCase().includes(this.searchQuery))
+      );
+    }
+    return filtered.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }
+  toggleFold(catName) {
+    this.foldState[catName] = !this.foldState[catName];
+    this.renderBookmarks();
+  }
+  renderBookmarks() {
+    const wrap = document.getElementById('bookmarkGrid');
+    wrap.innerHTML = '';
+    const filtered = this.getFilteredBookmarks();
+    document.getElementById('countAll').textContent = this.bookmarks.length;
+    document.getElementById('countPinned').textContent = this.bookmarks.filter(b => b.pinned).length;
+    document.getElementById('countPrivate').textContent = this.bookmarks.filter(b => b.isPrivate).length;
+    const groupMap = {};
+    filtered.forEach(item => {
+      const catName = item.category || '未分类';
+      if (!groupMap[catName]) groupMap[catName] = [];
+      groupMap[catName].push(item);
+    });
+    const sortedGroups = [];
+    this.categories.forEach(cat => {
+      if (groupMap[cat]) sortedGroups.push({ name: cat, list: groupMap[cat] });
+      delete groupMap[cat];
+    });
+    Object.keys(groupMap).forEach(cat => {
+      sortedGroups.push({ name: cat, list: groupMap[cat] });
+    });
+    if (sortedGroups.length === 0) {
+      wrap.innerHTML = `<div class="empty-state"><div class="icon">📭</div><h3>暂无书签</h3><p>登录后点击右下角加号添加第一个书签</p></div>`;
+      return;
+    }
+    let html = '';
+    sortedGroups.forEach(group => {
+      const { name, list } = group;
+      const color = this.getCategoryColor(name);
+      const isFold = this.foldState[name];
+      // ===== 核心修改：dot 添加 folded 类名控制黑色边缘，移除 toggle-fold 按钮 =====
+      const dotClass = isFold ? 'dot folded' : 'dot';
+      html += `<div class="category-group-wrap" data-cat="${this.escapeHtml(name)}">
+        <h2 class="category-group-title">
+          <span class="${dotClass}" style="background:${color}" onclick="app.toggleFold('${this.escapeHtml(name)}')" title="${isFold ? '点击展开' : '点击折叠'}"></span>
+          ${this.escapeHtml(name)}
+          <span class="count-text">(${list.length})</span>
+        </h2>
+        <div class="bookmark-grid ${isFold ? 'hidden' : ''}">`;
+      list.forEach(b => {
+        html += this.createBookmarkCard(b);
+      });
+      html += `</div></div>`;
+    });
+    wrap.innerHTML = html;
+  }
+  createBookmarkCard(b) {
+    const isLocked = b.isPrivate && !this.isAuthenticated;
+    const categoryColor = this.getCategoryColor(b.category);
+    let actionHtml = '';
+    if (!isLocked) {
+      actionHtml = `<div class="card-actions">
+        <button onclick="event.stopPropagation();app.editBookmark('${b.id}')" title="编辑">✏️</button>
+        <button class="delete" onclick="event.stopPropagation();app.deleteBookmark('${b.id}')" title="删除">🗑️</button>
+      </div>`;
+    }
+    const clickEvent = isLocked ? '' : `onclick="window.open('${this.escapeHtml(b.url)}','_blank')"`;
+    if (isLocked) {
+      return `<div class="bookmark-card ${b.pinned ? 'pinned' : ''} ${b.isPrivate ? 'private' : ''} private-locked" data-id="${b.id}" ${clickEvent}>
+      <div class="card-header"><h3 class="card-title">${this.escapeHtml(b.title)}</h3>
+        <div class="card-badges">${b.pinned ? '<span class="badge badge-pinned">📌</span>' : ''}${b.isPrivate ? '<span class="badge badge-private">🔒</span>' : ''}<span class="badge badge-category" style="border-color: ${categoryColor}33; color: ${categoryColor}">${this.escapeHtml(b.category || '未分类')}</span></div>
+      </div>
+      <p class="card-desc">${this.escapeHtml(b.description || '暂无描述')}</p>
+      <div class="card-footer">
+        <span class="card-link" style="color: var(--text-muted); cursor: not-allowed;">🔒 私有内容</span>
+        ${actionHtml}
+      </div>
+      </div>`;
+    }
+    return `<div class="bookmark-card ${b.pinned ? 'pinned' : ''} ${b.isPrivate ? 'private' : ''}" data-id="${b.id}" ${clickEvent}>
+      <div class="card-header"><h3 class="card-title">${this.escapeHtml(b.title)}</h3>
+        <div class="card-badges">${b.pinned ? '<span class="badge badge-pinned">📌</span>' : ''}${b.isPrivate ? '<span class="badge badge-private">🔒</span>' : ''}<span class="badge badge-category" style="border-color: ${categoryColor}33; color: ${categoryColor}">${this.escapeHtml(b.category || '未分类')}</span></div>
+      </div>
+      <p class="card-desc">${this.escapeHtml(b.description || '暂无描述')}</p>
+      <div class="card-footer">
+        <a href="${this.escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="card-link" onclick="event.stopPropagation()">🌐 ${this.truncateUrl(b.url)}</a>
+        ${actionHtml}
+      </div>
+      </div>`;
+  }
+  renderCategories() {
+    const list = document.getElementById('categoryList');
+    const counts = {};
+    this.bookmarks.forEach(b => {
+      if (!counts[b.category]) counts[b.category] = 0;
+      counts[b.category] += 1;
+    });
+    list.innerHTML = this.categories.map(cat => {
+      const color = this.getCategoryColor(cat);
+      const isActive = this.currentView === cat;
+      const itemCount = counts[cat] || 0;
+      const disableDel = cat === '未分类' || itemCount > 0;
+      let delTip = '';
+      if (cat === '未分类') {
+        delTip = '默认分类不可删除';
+      } else if (itemCount > 0) {
+        delTip = `该分类下存在${itemCount}个书签，无法删除`;
+      } else {
+        delTip = '删除此空分类';
+      }
+      return `<div class="category-item ${isActive ? 'active' : ''}" draggable="true" data-cat="${this.escapeHtml(cat)}"
+        ondragstart="app.handleDragStart(event)"
+        ondragover="app.handleDragOver(event)"
+        ondragleave="app.handleDragLeave(event)"
+        ondrop="app.handleDrop(event)"
+        ondragend="app.handleDragEnd(event)">
+        <span class="cat-color" style="background: ${color}"></span>
+        <span class="cat-text" onclick="event.stopPropagation();app.setView('${this.escapeHtml(cat)}')">${this.escapeHtml(cat)}</span>
+        <span class="cat-count">${itemCount}</span>
+        <button class="cat-del-btn" title="${this.escapeHtml(delTip)}" onclick="event.stopPropagation();app.deleteCategory('${this.escapeHtml(cat)}')" ${disableDel ? 'disabled style="opacity:0.3;cursor:not-allowed"' : ''}>×</button>
+      </div>`;
+    }).join('');
+    const select = document.getElementById('formCategory');
+    select.innerHTML = this.categories.map(cat => `<option value="${this.escapeHtml(cat)}">${this.escapeHtml(cat)}</option>`).join('');
+  }
+  handleDragStart(e) {
+    this.dragItem = e.target;
+    e.target.style.opacity = '0.4';
+    e.dataTransfer.setData('text/plain', e.target.dataset.cat);
+  }
+  handleDragEnd(e) {
+    e.target.style.opacity = '1';
+    this.dragItem = null;
+    document.querySelectorAll('.category-item').forEach(el=>el.style.background='');
+  }
+  handleDragOver(e) {
+    e.preventDefault();
+    if(e.target.classList.contains('category-item') && e.target !== this.dragItem) {
+      e.target.style.background = 'rgba(255,255,255,0.15)';
+    }
+  }
+  handleDragLeave(e) {
+    if(e.target.classList.contains('category-item')) e.target.style.background='';
+  }
+  async handleDrop(e) {
+    e.preventDefault();
+    const dropEl = e.target.closest('.category-item');
+    if(!dropEl || dropEl === this.dragItem) return;
+    const dragName = this.dragItem.dataset.cat;
+    const dropName = dropEl.dataset.cat;
+    if(dragName === dropName) return;
+    const arr = [...this.categories];
+    const dragIdx = arr.indexOf(dragName);
+    const dropIdx = arr.indexOf(dropName);
+    arr.splice(dragIdx,1);
+    arr.splice(dropIdx,0,dragName);
+    this.categories = arr;
+    await this.saveCategoryOrder();
+    this.renderCategories();
+  }
+  async saveCategoryOrder() {
+    if(!this.isAuthenticated) {
+      this.showToast('请先验证身份', 'error');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/categories/sort`, {
+        method:'PUT',
+        headers: this.authHeaders(),
+        body: JSON.stringify({ list: this.categories })
+      });
+      if(!res.ok) throw new Error('排序保存失败');
+    } catch(err) {
+      this.showToast(err.message, 'error');
+    }
+  }
+  async deleteCategory(name) {
+    if(!this.isAuthenticated) {
+      this.showToast('请先验证身份', 'error');
+      this.toggleAuth();
+      return;
+    }
+    if(name === '未分类') {
+      this.showToast('默认分类「未分类」禁止删除', 'error');
+      return;
+    }
+    const hasBookmark = this.bookmarks.some(b=>b.category === name);
+    if(hasBookmark) {
+      this.showToast(`分类「${name}」下存在书签，请先清空书签`, 'error');
+      return;
+    }
+    if(!confirm(`确定删除空分类「${name}」？`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/categories/${encodeURIComponent(name)}`, {
+        method:'DELETE',
+        headers: this.authHeaders()
+      });
+      if(res.status === 401) {
+        this.showToast('身份失效，请重新验证', 'error');
+        return;
+      }
+      if(!res.ok) throw new Error('删除失败');
+      this.showToast('分类已删除', 'success');
+      await this.loadData();
+      this.renderCategories();
+      this.renderBookmarks();
+    } catch(e) {
+      this.showToast(e.message, 'error');
+    }
+  }
+  getCategoryColor(category) {
+    const colors = ['#4f46e5', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6'];
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  }
+  showAddModal() {
+    if(!this.isAuthenticated){
+      this.showToast('请先验证身份后添加书签','error');
+      this.toggleAuth();
+      return;
+    }
+    document.getElementById('bookmarkForm').reset();
+    document.getElementById('bookmarkId').value = '';
+    document.getElementById('modalTitle').textContent = '新建书签';
+    this._lockBodyScroll();
+    document.getElementById('bookmarkModal').classList.add('open');
+    document.getElementById('formTitle').focus();
+  }
+  editBookmark(id) {
+    const b = this.bookmarks.find(x => x.id === id);
+    if (!b) return;
+    document.getElementById('bookmarkId').value = b.id;
+    document.getElementById('formTitle').value = b.title;
+    document.getElementById('formUrl').value = b.url;
+    document.getElementById('formDesc').value = b.description || '';
+    document.getElementById('formCategory').value = b.category || '未分类';
+    document.getElementById('formPinned').checked = b.pinned;
+    document.getElementById('formPrivate').checked = b.isPrivate;
+    document.getElementById('modalTitle').textContent = '编辑书签';
+    this._lockBodyScroll();
+    document.getElementById('bookmarkModal').classList.add('open');
+  }
+  closeModalByOverlay(e) { if(e.target.id === 'bookmarkModal') this.closeModal(); }
+  closeAuthModalByOverlay(e) { if(e.target.id === 'authModal') this.closeAuthModal(); }
+  closeCategoryModalByOverlay(e) { if(e.target.id === 'categoryModal') this.closeCategoryModal(); }
+  closeDeleteModalByOverlay(e) { if(e.target.id === 'deleteModal') this.closeDeleteModal(); }
+  closeModal() {
+    document.getElementById('bookmarkModal').classList.remove('open');
+    this._unlockBodyScroll();
+  }
+  async saveBookmark() {
+    if (!this.isAuthenticated) { this.showToast('请先验证', 'error'); this.toggleAuth(); return; }
+    const id = document.getElementById('bookmarkId').value;
+    const title = document.getElementById('formTitle').value.trim();
+    const url = document.getElementById('formUrl').value.trim();
+    const description = document.getElementById('formDesc').value.trim();
+    const category = document.getElementById('formCategory').value;
+    const pinned = document.getElementById('formPinned').checked;
+    const isPrivate = document.getElementById('formPrivate').checked;
+    if (!title || !url) { this.showToast('请填写标题和链接', 'error'); return; }
+    const data = { title, url, description, category, pinned, isPrivate };
+    try {
+      const res = await fetch(API_BASE + '/bookmarks' + (id ? '/' + id : ''), {
+        method: id ? 'PUT' : 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (res.status === 401) { this.showToast('身份失效', 'error'); this.toggleAuth(); return; }
+      if (!res.ok) throw new Error('保存失败');
+      this.showToast(id ? '更新成功' : '创建成功', 'success');
+      this.closeModal();
+      await this.loadData();
+      this.renderCategories();
+      this.renderBookmarks();
+    } catch (e) { this.showToast(e.message, 'error'); }
+  }
+  deleteBookmark(id) { this.deleteTarget = id; this._lockBodyScroll(); document.getElementById('deleteModal').classList.add('open'); }
+  closeDeleteModal() { document.getElementById('deleteModal').classList.remove('open'); this.deleteTarget = null; this._unlockBodyScroll(); }
+  async confirmDelete() {
+    if (!this.isAuthenticated) { this.showToast('请先验证', 'error'); this.toggleAuth(); return; }
+    if (!this.deleteTarget) return;
+    try {
+      const res = await fetch(API_BASE + '/bookmarks/' + this.deleteTarget, { method: 'DELETE', headers: this.authHeaders() });
+      if (res.status === 401) { this.showToast('身份失效', 'error'); this.toggleAuth(); return; }
+      if (!res.ok) throw new Error('删除失败');
+      this.showToast('书签已删除', 'success');
+      this.closeDeleteModal();
+      await this.loadData();
+      this.renderCategories();
+      this.renderBookmarks();
+    } catch (e) { this.showToast(e.message, 'error'); }
+  }
+  showAddCategory() {
+    if(!this.isAuthenticated){
+      this.showToast('请先验证身份', 'error');
+      this.toggleAuth();
+      return;
+    }
+    document.getElementById('newCategoryName').value = '';
+    this._lockBodyScroll();
+    document.getElementById('categoryModal').classList.add('open');
+    document.getElementById('newCategoryName').focus();
+  }
+  closeCategoryModal() { document.getElementById('categoryModal').classList.remove('open'); this._unlockBodyScroll(); }
+  async addCategory() {
+    if (!this.isAuthenticated) { this.showToast('请先验证', 'error'); return; }
+    const name = document.getElementById('newCategoryName').value.trim();
+    if (!name) return;
+    if (this.categories.includes(name)) { this.showToast('分类已存在', 'error'); return; }
+    try {
+      const res = await fetch(API_BASE + '/categories', {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify({ name })
+      });
+      const json = await res.json();
+      if (res.status === 401) { this.showToast('身份失效', 'error'); this.toggleAuth(); return; }
+      if (!res.ok) throw new Error(json.error || '创建失败');
+      this.showToast('分类创建成功', 'success');
+      this.closeCategoryModal();
+      await this.loadData();
+      this.renderCategories();
+    } catch (e) { this.showToast(e.message, 'error'); }
+  }
+  toggleAuth() {
+    if (this.isAuthenticated) { this.logout(); }
+    else {
+      document.getElementById('authPassword').value = '';
+      document.getElementById('authError').textContent = '';
+      this._lockBodyScroll();
+      document.getElementById('authModal').classList.add('open');
+      document.getElementById('authPassword').focus();
+    }
+  }
+  closeAuthModal() { document.getElementById('authModal').classList.remove('open'); this._unlockBodyScroll(); }
+  async doAuth() {
+    const password = document.getElementById('authPassword').value;
+    try {
+      const res = await fetch(API_BASE + '/auth', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.authToken = data.token;
+        this.isAuthenticated = true;
+        localStorage.setItem('bookmark_auth', this.authToken);
+        this.showToast('验证成功', 'success');
+        this.closeAuthModal();
+        this.updateAuthUI();
+        await this.loadData();
+        this.renderBookmarks();
+      } else {
+        document.getElementById('authError').textContent = '密码错误';
+      }
+    } catch (e) {
+      document.getElementById('authError').textContent = '验证请求失败';
+    }
+  }
+  logout() {
+    this.authToken = ''; this.isAuthenticated = false;
+    localStorage.removeItem('bookmark_auth');
+    this.updateAuthUI();
+    this.loadData().then(() => {
+        this.renderCategories();
+        this.renderBookmarks();
+    });
+    this.showToast('已退出验证', 'info');
+  }
+  updateAuthUI() {
+    const icon = document.getElementById('authIcon');
+    const status = document.getElementById('authStatus');
+    const addCatBtn = document.getElementById('addCategoryBtn');
+    const navPrivate = document.getElementById('navPrivate');
+    const fabBtn = document.getElementById('fabAddBtn');
+    if (this.isAuthenticated) {
+      icon.textContent = '🔓';
+      status.textContent = '已验证';
+      if (addCatBtn) addCatBtn.style.display = 'flex';
+      navPrivate.style.display = 'flex';
+      if(fabBtn) fabBtn.style.display = 'flex';
+    } else {
+      icon.textContent = '🔒';
+      status.textContent = '未验证';
+      if (addCatBtn) addCatBtn.style.display = 'none';
+      navPrivate.style.display = 'none';
+      if(fabBtn) fabBtn.style.display = 'none';
+    }
+  }
+  /* ===== 锁定 body 滚动：使用计数器支持嵌套弹窗 ===== */
+  _lockBodyScroll() {
+    if (this._lockCount === 0) {
+      this._bodyScrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      document.body.classList.add('locked');
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100%';
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100%';
+      document.body.style.position = 'relative';
+    }
+    this._lockCount++;
+  }
+  /* ===== 解锁 body 滚动：计数器归零时才真正解锁 ===== */
+  _unlockBodyScroll() {
+    this._lockCount = Math.max(0, this._lockCount - 1);
+    if (this._lockCount === 0) {
+      document.body.classList.remove('locked');
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.body.style.position = '';
+      window.scrollTo(0, this._bodyScrollTop);
+    }
+  }
+  showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    if (type === 'error') icon = '❌';
+    toast.innerHTML = `<span>${icon}</span> ${this.escapeHtml(message)}`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+  escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  truncateUrl(url) {
+    try {
+      const u = new URL(url);
+      const host = u.hostname;
+      const path = u.path;
+      if (path.length <= 20) return host + path;
+      return host + path.slice(0, 20) + '...';
+    } catch {
+      if (url.length > 30) return url.slice(0, 30) + '...';
+      return url;
+    }
+  }
+}
+const app = new BookmarkApp();
+</script>
+</body>
+</html>
