@@ -2,6 +2,10 @@
 
 一个功能完整的书签管理应用，部署在 EdgeOne Pages 上，使用 KV 存储持久化数据。
 
+## 页面
+<img src="主页.png" alt="主页" style="max-width:100px">
+<img src="侧边栏.png" alt="侧边栏" style="max-width:100px">
+
 ## 功能特性
 
 - ✅ **KV 持久化存储** - 所有数据存储在 EdgeOne KV 中
