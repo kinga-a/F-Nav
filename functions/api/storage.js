@@ -160,16 +160,16 @@ export async function onRequest(context) {
         }, 200, corsHeaders);
       }
 
-      // [安全] VULN-01（补漏）：getConfig 单值/批量读取敏感配置段（如 ai）必须先鉴权
-      if (requiresAuthForConfig(getConfig)) {
-        const isAdmin = await verifyAuth({
-          providedPassword: getAuthToken(request),
-          serverPassword: env.PASSWORD,
-          kv,
-        });
-        if (!isAdmin) {
-          return jsonResponse({ error: '需要密码验证' }, 401, corsHeaders);
-        }
+      // [安全] VULN-01（补漏）：getConfig 读取敏感配置段（如 ai）需鉴权。
+      // 单值 ai → 未鉴权 401（防直接偷 Key）；
+      // 批量含 ai → 未鉴权时剔除 ai 段返回其余（200），不破坏前端匿名加载；已鉴权返回全部。
+      const configIsAdmin = await verifyAuth({
+        providedPassword: getAuthToken(request),
+        serverPassword: env.PASSWORD,
+        kv,
+      });
+      if (getConfig && !getConfig.includes(',') && requiresAuthForConfig(getConfig) && !configIsAdmin) {
+        return jsonResponse({ error: '需要密码验证' }, 401, corsHeaders);
       }
 
       // 优化：支持批量获取多个配置 ?getConfig=search,website,ai
@@ -188,10 +188,7 @@ export async function onRequest(context) {
             try { unlockedCategories = new Set(JSON.parse(unlockedParam)); } catch (e) {}
           }
 
-          const providedPassword = getAuthToken(request);
-          const isAdmin = await verifyAuth({ providedPassword, serverPassword: env.PASSWORD, kv });
-
-          const links = await readAllCategoryLinks(kv, allCategories, unlockedCategories, isAdmin);
+          const links = await readAllCategoryLinks(kv, allCategories, unlockedCategories, configIsAdmin);
           const sanitizedCategories = allCategories.map(({ password, ...rest }) => ({
             ...rest,
             hasPassword: !!(password && password.trim() !== '')
@@ -200,9 +197,8 @@ export async function onRequest(context) {
           // 同时获取所有配置
           const allConfig = await mergeAllConfigSections(kv);
 
-          // [安全] 纵深防御：匿名/未鉴权批量读取时，绝不返回敏感配置段（如 ai）
-          // （requiresAuthForConfig 已在上方拦截含敏感段的批量请求；此处在放行路径上再兜一层）
-          if (!isAdmin) {
+          // [安全] 纵深防御：未鉴权读取时，绝不返回敏感配置段（如 ai）
+          if (!configIsAdmin) {
             for (const s of SENSITIVE_SECTIONS) {
               delete allConfig[s];
             }
@@ -216,6 +212,8 @@ export async function onRequest(context) {
         }
 
         await Promise.all(requestedSections.map(async (section) => {
+          // [安全] 未鉴权时跳过敏感段（ai），其余正常返回（不破坏前端匿名批量加载）
+          if (!configIsAdmin && SENSITIVE_SECTIONS.has(section)) return;
           const val = await readConfigSection(kv, section);
           const configKey = section === 'mastodon' ? 'ticker' : section;
           configMap[configKey] = val || {};

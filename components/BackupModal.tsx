@@ -233,7 +233,11 @@ const BackupModal: React.FC<BackupModalProps> = ({
 
     let appConfig = null;
     try {
-      const res = await fetch('/api/storage?key=config');
+      // [安全] key=config 读取需认证：携带管理员 Token（VULN-01 后该接口已强制鉴权）
+      const token = localStorage.getItem('cloudnav_auth_token') || localStorage.getItem('authToken') || '';
+      const res = await fetch('/api/storage?key=config', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.value) appConfig = JSON.parse(data.value);
