@@ -25,6 +25,26 @@ function isAllowedKey(key: string): boolean {
   return ALLOWED_KEY_PREFIXES.some(p => key.startsWith(p));
 }
 
+// 敏感配置段：getConfig 单值/批量读取时必须鉴权；即使匿名批量被放行也绝不返回（纵深防御）
+const SENSITIVE_SECTIONS = new Set(['ai']);
+
+/**
+ * 判断某 getConfig 请求是否需要鉴权（与 EdgeOne 版本一致）
+ *  - true / favicon / categories / links 为访客浏览所需，匿名放行
+ *  - 批量请求只要包含任一敏感 section 就必须鉴权
+ *  - 单值请求命中敏感 section 就必须鉴权
+ */
+function requiresAuthForConfig(getConfig: string | null | undefined): boolean {
+  if (!getConfig) return false;
+  if (getConfig === 'true') return false;
+  if (getConfig === 'favicon' || getConfig === 'categories' || getConfig === 'links') return false;
+  if (getConfig.includes(',')) {
+    // 批量：只要含敏感 section 就要求鉴权
+    return getConfig.split(',').some(s => SENSITIVE_SECTIONS.has(s.trim()));
+  }
+  return SENSITIVE_SECTIONS.has(getConfig);
+}
+
 async function readConfigSection(kv: any, section: string) {
   const sectionStr = await kv.get(`config:${section}`);
   if (sectionStr) return typeof sectionStr === 'string' ? JSON.parse(sectionStr) : sectionStr;
@@ -152,6 +172,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           tokenValid,
           totpEnabled,
         }, corsHeaders);
+      }
+
+      // [安全] VULN-01（补漏）：getConfig 单值/批量读取敏感配置段（如 ai）必须先鉴权
+      if (requiresAuthForConfig(getConfig as string | null | undefined)) {
+        const providedPassword = getAuthToken(req) || '';
+        const isAdmin = await verifyAuth(providedPassword);
+        if (!isAdmin) {
+          return jsonResponse(res, 401, { error: '需要密码验证' }, corsHeaders);
+        }
       }
 
       if (CONFIG_SECTIONS.includes(getConfig as string)) {

@@ -16,12 +16,32 @@ const DENIED_KEYS = ['auth_token', 'last_token', 'totp_secret', 'totp_recovery',
 // 允许通过 ?key= 直接读取的 KV key 前缀白名单
 const ALLOWED_KEY_PREFIXES = ['config', 'cate_config', 'links:', 'favicon:'];
 
+// 敏感配置段：getConfig 单值/批量读取时必须鉴权；即使匿名批量被放行也绝不返回（纵深防御）
+const SENSITIVE_SECTIONS = new Set(['ai']);
+
 function isDeniedKey(key) {
   return DENIED_KEYS.some(k => key === k || key.startsWith(`${k}:`));
 }
 
 function isAllowedKey(key) {
   return ALLOWED_KEY_PREFIXES.some(p => key.startsWith(p));
+}
+
+/**
+ * 判断某 getConfig 请求是否需要鉴权
+ *  - true / favicon / categories / links 为访客浏览所需，匿名放行
+ *  - 批量请求只要包含任一敏感 section 就必须鉴权
+ *  - 单值请求命中敏感 section 就必须鉴权
+ */
+function requiresAuthForConfig(getConfig) {
+  if (!getConfig) return false;
+  if (getConfig === 'true') return false;
+  if (getConfig === 'favicon' || getConfig === 'categories' || getConfig === 'links') return false;
+  if (getConfig.includes(',')) {
+    // 批量：只要含敏感 section 就要求鉴权
+    return getConfig.split(',').some(s => SENSITIVE_SECTIONS.has(s.trim()));
+  }
+  return SENSITIVE_SECTIONS.has(getConfig);
 }
 
 async function readConfigSection(kv, section) {
@@ -140,6 +160,18 @@ export async function onRequest(context) {
         }, 200, corsHeaders);
       }
 
+      // [安全] VULN-01（补漏）：getConfig 单值/批量读取敏感配置段（如 ai）必须先鉴权
+      if (requiresAuthForConfig(getConfig)) {
+        const isAdmin = await verifyAuth({
+          providedPassword: getAuthToken(request),
+          serverPassword: env.PASSWORD,
+          kv,
+        });
+        if (!isAdmin) {
+          return jsonResponse({ error: '需要密码验证' }, 401, corsHeaders);
+        }
+      }
+
       // 优化：支持批量获取多个配置 ?getConfig=search,website,ai
       if (getConfig && getConfig.includes(',')) {
         const requestedSections = getConfig.split(',').filter(s => CONFIG_SECTIONS.includes(s) || s === 'true');
@@ -167,6 +199,14 @@ export async function onRequest(context) {
 
           // 同时获取所有配置
           const allConfig = await mergeAllConfigSections(kv);
+
+          // [安全] 纵深防御：匿名/未鉴权批量读取时，绝不返回敏感配置段（如 ai）
+          // （requiresAuthForConfig 已在上方拦截含敏感段的批量请求；此处在放行路径上再兜一层）
+          if (!isAdmin) {
+            for (const s of SENSITIVE_SECTIONS) {
+              delete allConfig[s];
+            }
+          }
 
           return jsonResponse({
             links,

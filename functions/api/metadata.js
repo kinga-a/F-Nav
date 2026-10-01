@@ -87,10 +87,12 @@ export async function onRequest(context) {
     clearTimeout(timer);
 
     if (!res) {
-      return jsonResponse({ error: 'fetch failed' }, 502, corsHeaders);
+      return jsonResponse({ error: '无法获取页面信息' }, 502, corsHeaders);
     }
     if (!res.ok) {
-      return jsonResponse({ error: `fetch failed: ${res.status}` }, 502, corsHeaders);
+      // [安全] VULN-04：不向客户端暴露目标服务器状态码（防探测），详情仅进服务端日志
+      console.error(`[metadata] target returned ${res.status} for ${validated.url.toString()}`);
+      return jsonResponse({ error: '无法获取页面信息' }, 502, corsHeaders);
     }
 
     // 读取前 MAX_HTML_BYTES，用流式 TextDecoder 正确拼接
@@ -135,8 +137,9 @@ export async function onRequest(context) {
       ...corsHeaders,
       'Cache-Control': 'public, max-age=86400',
     });
-  } catch (e) {
+  } catch (err) {
     // [安全] VULN-04：不向客户端泄漏内部异常详情
-    return jsonResponse({ error: 'fetch failed' }, 502, corsHeaders);
+    console.error('[metadata] fetch failed:', err);
+    return jsonResponse({ error: '无法获取页面信息' }, 502, corsHeaders);
   }
 }
