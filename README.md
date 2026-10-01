@@ -103,7 +103,7 @@ functions/api/ 是 EdgeOne 的边缘函数，必须随本次一起部署，否�
    - 安装命令：`pnpm install`
    - 编译命令：`pnpm build`
 4. 绑定 KV：创建 KV 命名空间，变量名称设为 `CLOUDNAV_KV`。
-5. 环境变量：设置 `PASSWORD`（管理密码）。
+5. 环境变量：设置 `PASSWORD`（管理密码）；如需跨源访问（本地开发、备用域名等），设置 `ALLOWED_ORIGIN`，值需带协议（如 `https://sq.y11.fun`），多个用逗号分隔。
 6. 自托管图标与缓存：
    - 本项目支持使用 **EdgeOne Pages Blob 存储** 实现网站图标缓存及自定义上传。
    - **无需手动配置/创建存储空间**，EdgeOne Pages Blob 由 SDK 首次调用时**自动创建**（命名空间归属于当前项目）。
@@ -123,6 +123,7 @@ functions/api/ 是 EdgeOne 的边缘函数，必须随本次一起部署，否�
    - 添加绑定：变量名称设为 `CLOUDNAV_KV`，选择刚才创建的命名空间。
 4. 环境变量：
    - 在项目设置 -> **Environment variables** 中添加 `PASSWORD`（管理密码）。
+   - 如需跨源访问，添加 `ALLOWED_ORIGIN`（带协议的完整 Origin，多个用逗号分隔）。
 5. 自托管图标与缓存：
    - 本项目支持使用 **Cloudflare R2 对象存储** 实现网站图标缓存及自定义上传。
    - 导航至 **Workers & Pages** -> **R2** -> **Create bucket**，名字设为 `CLOUDNAV_R2`（或者您喜欢的名字）。
@@ -141,6 +142,7 @@ functions/api/ 是 EdgeOne 的边缘函数，必须随本次一起部署，否�
    - Vercel 会自动注入 `KV_URL` 等环境变量。
 3. 环境变量：
    - 在项目 **Settings** -> **Environment Variables** 中手动添加 `PASSWORD`。
+   - 如需跨源访问，添加 `ALLOWED_ORIGIN`（带协议的完整 Origin，多个用逗号分隔）。
 4. 重新部署。
 
 ## ⚙️ 环境变量
@@ -148,8 +150,22 @@ functions/api/ 是 EdgeOne 的边缘函数，必须随本次一起部署，否�
 | 变量 | 说明 | 必填 | 默认值 |
 |------|------|------|--------|
 | `PASSWORD` | 管理后台登录密码 | 是 | - |
-| `ALLOWED_ORIGIN` | CORS 允许的域名 | 否 | `*` |
+| `ALLOWED_ORIGIN` | 跨源访问白名单，多个用逗号分隔，**必须带协议**（如 `https://sq.y11.fun`）。不填则仅允许同源访问 | 否 | 仅同源（无 `*` 兜底） |
 | `UPLOAD_PLATFORM` | 上传与图标存储平台，部署到 Cloudflare 时可设为 `cloudflare` | 否 | - |
+
+## 🔒 安全加固说明（2026-10 更新）
+
+本仓库已按安全评估报告完成全量加固，部署后请注意以下行为变化：
+
+- **管理操作需登录**：配置读写、WebDAV 云同步、备份恢复、图标上传/删除等接口强制认证（`Authorization: Bearer <token>`）；访客浏览（链接/分类/图标/搜索）保持匿名可用，不受影响。
+- **敏感配置保护**：AI 配置段（`apiKey` 等）匿名不可读取——单值请求返回 401，批量请求自动剔除该段；仅登录管理员可见（纵深防御：即使鉴权被绕过也不会返回密钥）。
+- **登录防护**：登录失败 5 次后按 IP 指数退避限流（最长 5 分钟）。
+- **恢复码一次性使用**：恢复码登录后立即轮换，防止重放攻击。
+- **SSRF 防护**：metadata 抓取与 WebDAV 代理仅允许 HTTPS 公网地址，逐跳校验跳转目标，禁止内网/私网地址；WebDAV 代理必须登录后使用。
+- **安全响应头**：静态资源（`public/_headers`、`vercel.json`）与 API 统一响应均启用 CSP、HSTS、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy`、`Permissions-Policy` 六项。
+- **CORS 白名单**：默认仅同源放行，跨源需在 `ALLOWED_ORIGIN` 中精确声明（无 `*` 兜底），防止其他站点浏览器端偷偷读取 API。
+
+> ⚠️ **部署提醒**：EdgeOne Pages 与 Vercel 部署后，如需跨源访问请设置 `ALLOWED_ORIGIN=https://<你的域名>`（值必须带协议，多个域名用逗号分隔，如 `https://sq.y11.fun, https://another.example.com`）。若曾泄漏过管理密码或 AI Key，请立即吊销/修改并重新登录。
 
 ## 🛠️ 本地开发
 
