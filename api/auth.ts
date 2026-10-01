@@ -1,18 +1,73 @@
 // Vercel 认证接口
 // 含 TOTP 两步验证（RFC 6238）
+// [安全] VULN-06/07/08/09：恢复码轮换、登录限速、恒定时间比较、标准 Authorization 头
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getKV, getCorsHeaders, generateSecureToken, calcExpiryTtl, verifyAuth } from './_kvHelper.js';
+import { getKV, getCorsHeaders, generateSecureToken, calcExpiryTtl, verifyAuth, getAuthToken, timingSafeEqual, jsonResponse } from './_kvHelper.js';
+
+// ==================== 登录限速（进程内） ====================
+const MAX_ATTEMPTS = 5; // 连续失败 5 次后触发退避
+const MAX_BACKOFF_MS = 300000; // 退避上限 5 分钟
+const loginAttempts = new Map<string, { count: number; totpFails: number; lockedUntil: number }>();
+
+function getClientIp(req: VercelRequest): string {
+  const xff = req.headers['x-forwarded-for'];
+  return (
+    (req.headers['cf-connecting-ip'] as string) ||
+    (Array.isArray(xff) ? xff[0] : (xff as string | undefined))?.split(',')[0]?.trim() ||
+    (req.headers['x-real-ip'] as string) ||
+    'unknown'
+  );
+}
+
+function isLocked(ip: string): boolean {
+  const rec = loginAttempts.get(ip);
+  if (!rec) return false;
+  if (rec.lockedUntil && Date.now() < rec.lockedUntil) return true;
+  if (rec.lockedUntil && Date.now() >= rec.lockedUntil) {
+    loginAttempts.delete(ip);
+    return false;
+  }
+  return false;
+}
+
+function lockRemainingMs(ip: string): number {
+  const rec = loginAttempts.get(ip);
+  if (!rec?.lockedUntil) return 0;
+  return Math.max(0, rec.lockedUntil - Date.now());
+}
+
+function recordFailure(ip: string, type: 'password' | 'totp') {
+  const now = Date.now();
+  const rec = loginAttempts.get(ip) || { count: 0, totpFails: 0, lockedUntil: 0 };
+  if (type === 'totp') rec.totpFails += 1;
+  else rec.count += 1;
+  const fails = rec.count + rec.totpFails;
+  if (fails >= MAX_ATTEMPTS) {
+    const backoff = Math.min(Math.pow(2, fails - MAX_ATTEMPTS) * 1000, MAX_BACKOFF_MS);
+    rec.lockedUntil = now + backoff;
+    rec.count = 0;
+    rec.totpFails = 0;
+  } else {
+    rec.lockedUntil = 0;
+  }
+  loginAttempts.set(ip, rec);
+}
+
+function resetAttempts(ip: string) {
+  loginAttempts.delete(ip);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const corsHeaders = getCorsHeaders();
+  const corsHeaders = getCorsHeaders(req);
+  const clientIp = getClientIp(req);
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(204).setHeader('Access-Control-Allow-Origin', corsHeaders['Access-Control-Allow-Origin']).end();
+    return res.status(204).setHeader('Access-Control-Allow-Origin', corsHeaders['Access-Control-Allow-Origin'] || '').end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return jsonResponse(res, 405, { error: 'Method Not Allowed' }, corsHeaders);
   }
 
   try {
@@ -21,70 +76,88 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ==================== TOTP 管理操作（需要有效 Token） ====================
     if (body.action === 'totp-setup' || body.action === 'totp-activate' || body.action === 'totp-disable') {
-      const token = req.headers['x-auth-password'] as string;
-      const isAdmin = await verifyAuth(token);
+      const token = getAuthToken(req);
+      const isAdmin = await verifyAuth(token || '');
       if (!isAdmin) {
-        return res.status(401).json({ error: '请先登录' });
+        return jsonResponse(res, 401, { error: '请先登录' }, corsHeaders);
       }
 
       if (body.action === 'totp-setup') {
         const secret = generateTotpSecret();
         await kv.set('totp_pending', secret);
         const otpauth = `otpauth://totp/F-Nav:admin?secret=${secret}&issuer=F-Nav&algorithm=SHA1&digits=6&period=30`;
-        return res.status(200).json({ success: true, secret, otpauth });
+        return jsonResponse(res, 200, { success: true, secret, otpauth }, corsHeaders);
       }
 
       if (body.action === 'totp-activate') {
         const pending = await kv.get('totp_pending');
         if (!pending) {
-          return res.status(400).json({ error: '请先生成密钥' });
+          return jsonResponse(res, 400, { error: '请先生成密钥' }, corsHeaders);
         }
-        const ok = await verifyTotp(pending, String(body.code || '').trim());
+        const ok = await verifyTotp(String(pending), String(body.code || '').trim());
         if (!ok) {
-          return res.status(401).json({ error: '动态验证码错误，请检查验证器时间后重试' });
+          return jsonResponse(res, 401, { error: '动态验证码错误，请检查验证器时间后重试' }, corsHeaders);
         }
         const recovery = generateRecoveryCode();
         await kv.set('totp_secret', pending);
         await kv.set('totp_recovery', recovery);
         await kv.del('totp_pending');
-        return res.status(200).json({ success: true, recovery });
+        return jsonResponse(res, 200, { success: true, recovery }, corsHeaders);
       }
 
       if (body.action === 'totp-disable') {
         await kv.del('totp_secret');
         await kv.del('totp_recovery');
         await kv.del('totp_pending');
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
     }
 
     // ==================== 普通登录 ====================
+
+    // [安全] VULN-07：锁定期内直接拒绝
+    if (isLocked(clientIp)) {
+      const retryAfter = Math.ceil(lockRemainingMs(clientIp) / 1000);
+      return jsonResponse(res, 429, { error: '尝试次数过多，请稍后再试' }, {
+        ...corsHeaders,
+        'Retry-After': String(retryAfter),
+      });
+    }
+
     const { password, totp } = body;
 
     if (!process.env.PASSWORD) {
       console.error('Environment variable PASSWORD is not set');
-      return res.status(500).json({ error: '服务器未配置管理员密码' });
+      return jsonResponse(res, 500, { error: '服务器未配置管理员密码' }, corsHeaders);
     }
 
-    if (password !== process.env.PASSWORD) {
-      return res.status(401).json({ error: '密码错误' });
+    // [安全] VULN-08：恒定时间比较，避免时序侧信道
+    if (typeof password !== 'string' || !timingSafeEqual(password, process.env.PASSWORD)) {
+      recordFailure(clientIp, 'password');
+      return jsonResponse(res, 401, { error: '密码错误' }, corsHeaders);
     }
 
     // 两步验证：若已启用 TOTP，必须校验动态码或恢复码
     const totpSecret = await kv.get('totp_secret');
+    let rotatedRecovery: string | null = null;
     if (totpSecret) {
       const code = String(totp || '').trim();
       const recovery = await kv.get('totp_recovery');
-      if (recovery && code.toLowerCase() === recovery.toLowerCase()) {
-        // 恢复码登录：一次性有效，自动关闭两步验证
-        await kv.del('totp_secret');
-        await kv.del('totp_recovery');
-      } else if (await verifyTotp(totpSecret, code)) {
+      // [安全] VULN-06：恢复码一次性消费并轮换，TOTP 保持启用（不再永久关闭两步验证）
+      if (recovery && code && timingSafeEqual(code.toLowerCase(), String(recovery).toLowerCase())) {
+        const newRecovery = generateRecoveryCode();
+        await kv.set('totp_recovery', newRecovery);
+        rotatedRecovery = newRecovery;
+      } else if (code && await verifyTotp(String(totpSecret), code)) {
         // 动态码正确
       } else {
-        return res.status(401).json({ error: '动态验证码错误或已过期' });
+        recordFailure(clientIp, 'totp');
+        return jsonResponse(res, 401, { error: '动态验证码错误或已过期' }, corsHeaders);
       }
     }
+
+    // 登录成功：重置限速计数
+    resetAttempts(clientIp);
 
     // 清理旧 Token
     try {
@@ -121,11 +194,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await kv.set('last_token', token);
     }
 
-    return res.status(200).json({ success: true, token, message: '认证成功' });
+    return jsonResponse(res, 200, {
+      success: true,
+      token,
+      // [安全] VULN-06：使用恢复码登录时返回轮换后的新恢复码，提示用户妥善保存
+      ...(rotatedRecovery ? { recovery: rotatedRecovery, recoveryRotated: true } : {}),
+      message: '认证成功',
+    }, corsHeaders);
 
   } catch (err: any) {
-    console.error('Auth API error:', err);
-    return res.status(500).json({ error: '认证请求失败', details: err.message });
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    console.error(`Auth API error [${requestId}]:`, err);
+    return jsonResponse(res, 500, { error: '认证请求失败', requestId }, corsHeaders);
   }
 }
 

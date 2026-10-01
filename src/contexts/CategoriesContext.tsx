@@ -125,7 +125,7 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-auth-password': authToken,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({ links, categories }),
       }).catch(e => console.error('Sync categories failed:', e));

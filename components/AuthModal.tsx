@@ -47,7 +47,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onLogin, onClose, totpEna
       if (result.ok) {
         setPassword('');
         setTotp('');
-        toast.success('登录成功');
+        if (result.recovery) {
+          // [安全] 使用恢复码登录后已轮换，需向用户展示新恢复码并提醒保存
+          toast.success(`登录成功，两步验证仍开启。新恢复码：${result.recovery}（仅显示一次，请妥善保存）`);
+        } else {
+          toast.success('登录成功');
+        }
         onClose();
       } else {
         setError(result.error || '密码错误或无法连接服务器');

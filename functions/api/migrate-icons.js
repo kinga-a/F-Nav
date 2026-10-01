@@ -1,4 +1,4 @@
-import { getKV, getCorsHeaders, verifyAuth, jsonResponse } from './_kvAdapter.js';
+import { getKV, getCorsHeaders, verifyAuth, jsonResponse, getAuthToken } from './_kvAdapter.js';
 
 const UPSTREAM_PROVIDERS = [
   (domain) => `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
@@ -18,7 +18,7 @@ function detectMimeType(arrayBuffer) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -28,7 +28,8 @@ export async function onRequest(context) {
     return jsonResponse({ error: 'Method Not Allowed' }, 405, corsHeaders);
   }
 
-  const providedPassword = request.headers.get('x-auth-password');
+  // [安全] 标准 Authorization 鉴权头（兼容旧版 x-auth-password）
+  const providedPassword = getAuthToken(request);
   const kv = getKV(env);
   const isAuthenticated = await verifyAuth({
     providedPassword,
@@ -153,7 +154,9 @@ export async function onRequest(context) {
     return jsonResponse({ total, cached, failed, skipped }, 200, corsHeaders);
 
   } catch (err) {
-    console.error('Migration error:', err);
-    return jsonResponse({ error: err.message }, 500, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = crypto.randomUUID();
+    console.error(`Migration error [${requestId}]:`, err);
+    return jsonResponse({ error: '服务暂时不可用', requestId }, 500, corsHeaders);
   }
 }

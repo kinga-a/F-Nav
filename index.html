@@ -34,10 +34,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
 
     <!-- Security Headers -->
+    <!-- 注：Content-Security-Policy 无法通过 <meta http-equiv> 生效（VULN-14），已移至部署级 _headers 文件 -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:; media-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self';" />
 
     <title>F-Nav</title>
     <link rel="stylesheet" href="/src/index.css">

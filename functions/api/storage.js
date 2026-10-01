@@ -1,7 +1,7 @@
 // 统一存储接口 v2.3 - 性能优化版
 // 支持 EdgeOne Pages / Cloudflare Workers
 
-import { getKV, getCorsHeaders, verifyAuth, jsonResponse } from './_kvAdapter.js';
+import { getKV, getCorsHeaders, verifyAuth, jsonResponse, getAuthToken } from './_kvAdapter.js';
 
 const STORAGE_KEYS = {
   CONFIG_KEY: 'config',
@@ -9,6 +9,20 @@ const STORAGE_KEYS = {
 };
 
 const CONFIG_SECTIONS = ['ai', 'website', 'mastodon', 'weather', 'search', 'icon', 'view', 'ui'];
+
+// 敏感 key：即使鉴权逻辑将来再次失效，也必须在任何读取路径中显式拒绝
+const DENIED_KEYS = ['auth_token', 'last_token', 'totp_secret', 'totp_recovery', 'totp_pending'];
+
+// 允许通过 ?key= 直接读取的 KV key 前缀白名单
+const ALLOWED_KEY_PREFIXES = ['config', 'cate_config', 'links:', 'favicon:'];
+
+function isDeniedKey(key) {
+  return DENIED_KEYS.some(k => key === k || key.startsWith(`${k}:`));
+}
+
+function isAllowedKey(key) {
+  return ALLOWED_KEY_PREFIXES.some(p => key.startsWith(p));
+}
 
 async function readConfigSection(kv, section) {
   const sectionStr = await kv.get(`config:${section}`);
@@ -85,7 +99,7 @@ async function saveCategoryLinks(kv, links) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
   const url = new URL(request.url);
 
   if (request.method === 'OPTIONS') {
@@ -105,7 +119,7 @@ export async function onRequest(context) {
 
       if (checkAuth === 'true') {
         // 增强：若请求携带 Token，顺带验证其有效性（被其他设备登录踢下线时前端可自动登出）
-        const providedToken = request.headers.get('x-auth-password');
+        const providedToken = getAuthToken(request);
         let tokenValid = null;
         if (providedToken) {
           tokenValid = await verifyAuth({
@@ -142,7 +156,7 @@ export async function onRequest(context) {
             try { unlockedCategories = new Set(JSON.parse(unlockedParam)); } catch (e) {}
           }
 
-          const providedPassword = request.headers.get('x-auth-password');
+          const providedPassword = getAuthToken(request);
           const isAdmin = await verifyAuth({ providedPassword, serverPassword: env.PASSWORD, kv });
 
           const links = await readAllCategoryLinks(kv, allCategories, unlockedCategories, isAdmin);
@@ -205,7 +219,7 @@ export async function onRequest(context) {
         } catch (e) {}
       }
 
-      const providedPassword = request.headers.get('x-auth-password');
+      const providedPassword = getAuthToken(request);
       const isAdmin = await verifyAuth({
         providedPassword,
         serverPassword: env.PASSWORD,
@@ -248,7 +262,18 @@ export async function onRequest(context) {
         return jsonResponse(links, 200, corsHeaders);
       }
 
+      // [安全] VULN-01：?key= 直接读取任意 KV key —— 必须认证，且仅允许白名单内的非敏感 key
       if (key) {
+        if (!isAdmin) {
+          return jsonResponse({ error: '需要密码验证' }, 401, corsHeaders);
+        }
+        // 关键防线：即使鉴权逻辑将来再次失效，敏感 key 也必须显式拒绝
+        if (isDeniedKey(key)) {
+          return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
+        }
+        if (!isAllowedKey(key)) {
+          return jsonResponse({ error: 'Invalid key' }, 400, corsHeaders);
+        }
         if (key === STORAGE_KEYS.CONFIG_KEY) {
           const merged = await mergeAllConfigSections(kv);
           return jsonResponse({ key, value: JSON.stringify(merged) }, 200, corsHeaders);
@@ -292,7 +317,7 @@ export async function onRequest(context) {
         }
       }
 
-      const providedPassword = request.headers.get('x-auth-password');
+      const providedPassword = getAuthToken(request);
       const isAuthenticated = await verifyAuth({
         providedPassword,
         serverPassword: env.PASSWORD,
@@ -306,6 +331,11 @@ export async function onRequest(context) {
       if (body.authOnly) {
         await kv.put('last_auth_time', Date.now().toString());
         return jsonResponse({ success: true }, 200, corsHeaders);
+      }
+
+      // [安全] 写入路径同样拒绝敏感 key，防止误覆盖鉴权/TOTP 数据
+      if (body.key && isDeniedKey(body.key)) {
+        return jsonResponse({ error: 'Forbidden' }, 403, corsHeaders);
       }
 
       if (CONFIG_SECTIONS.includes(body.saveConfig)) {
@@ -382,7 +412,9 @@ export async function onRequest(context) {
     return jsonResponse({ error: 'Method Not Allowed' }, 405, corsHeaders);
 
   } catch (err) {
-    console.error('Storage API error:', err);
-    return jsonResponse({ error: 'Failed to fetch data', details: err.message }, 500, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情，仅输出请求 ID 便于服务端日志排查
+    const requestId = crypto.randomUUID();
+    console.error(`Storage API error [${requestId}]:`, err);
+    return jsonResponse({ error: '服务暂时不可用', requestId }, 500, corsHeaders);
   }
 }

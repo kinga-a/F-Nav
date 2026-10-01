@@ -213,12 +213,12 @@ export function AppLayout() {
       // Cleanup icon storage...
       if (linkToDelete.edgeoneBlobUrl?.startsWith('/api/favicon?key=')) {
         try { const u = new URL(linkToDelete.edgeoneBlobUrl, window.location.origin); const key = u.searchParams.get('key');
-          if (key) fetch(`/api/upload?key=${encodeURIComponent(key)}&platform=edgeone`, { method: 'DELETE', headers: { 'x-auth-password': authToken || '' } }).catch(()=>{});
+          if (key) fetch(`/api/upload?key=${encodeURIComponent(key)}&platform=edgeone`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken || ''}` } }).catch(()=>{});
         } catch(e){}
       }
       if (linkToDelete.cloudflareR2Url?.startsWith('/api/favicon?key=')) {
         try { const u = new URL(linkToDelete.cloudflareR2Url, window.location.origin); const key = u.searchParams.get('key');
-          if (key) fetch(`/api/upload?key=${encodeURIComponent(key)}&platform=cloudflare`, { method: 'DELETE', headers: { 'x-auth-password': authToken || '' } }).catch(()=>{});
+          if (key) fetch(`/api/upload?key=${encodeURIComponent(key)}&platform=cloudflare`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${authToken || ''}` } }).catch(()=>{});
         } catch(e){}
       }
     }

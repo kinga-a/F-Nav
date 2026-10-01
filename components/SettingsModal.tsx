@@ -90,7 +90,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken || ''}` },
         body: JSON.stringify({ action: 'totp-setup' }),
       });
       const data = await res.json();
@@ -118,7 +118,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken || ''}` },
         body: JSON.stringify({ action: 'totp-activate', code: totpCode.trim() }),
       });
       const data = await res.json();
@@ -145,7 +145,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken || '' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken || ''}` },
         body: JSON.stringify({ action: 'totp-disable' }),
       });
       if (res.ok) {
@@ -239,7 +239,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         Object.entries(sections).map(async ([key, config]) => {
           const res = await fetch('/api/storage', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify({ saveConfig: key, config }),
           });
           return { key, ok: res.ok, error: res.ok ? null : ((await res.json().catch(() => ({}))).error || res.statusText) };
@@ -311,7 +311,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await fetch('/api/migrate-icons', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-auth-password': authToken },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
       });
       const result = await res.json();
       if (res.ok) {

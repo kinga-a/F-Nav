@@ -21,6 +21,8 @@ type AuthAction =
 export interface LoginResult {
   ok: boolean;
   error?: string;
+  recovery?: string;
+  recoveryRotated?: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -67,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_KEY);
       const res = await fetch(`${API_ENDPOINTS.STORAGE}?checkAuth=true`, {
-        headers: token ? { 'x-auth-password': token } : undefined,
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
       });
       const data = await res.json();
       dispatch({ type: 'SET_REQUIRES_AUTH', payload: data.requiresAuth });
@@ -112,7 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.success && data.token) {
         localStorage.setItem(STORAGE_KEYS.AUTH_KEY, data.token);
         dispatch({ type: 'SET_TOKEN', payload: data.token });
-        return { ok: true };
+        return {
+          ok: true,
+          ...(data.recovery ? { recovery: data.recovery, recoveryRotated: !!data.recoveryRotated } : {}),
+        };
       }
 
       console.error('Login response missing token:', data);

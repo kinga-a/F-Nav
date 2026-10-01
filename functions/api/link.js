@@ -1,11 +1,11 @@
 // 链接添加接口（Chrome 扩展等外部调用）
 // 支持 EdgeOne Pages / Cloudflare Workers
 
-import { getKV, getCorsHeaders, verifyAuth, jsonResponse } from './_kvAdapter.js';
+import { getKV, getCorsHeaders, verifyAuth, jsonResponse, getAuthToken } from './_kvAdapter.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -15,8 +15,8 @@ export async function onRequest(context) {
     return jsonResponse({ error: 'Method Not Allowed' }, 405, corsHeaders);
   }
 
-  // 认证检查
-  const providedPassword = request.headers.get('x-auth-password');
+  // 认证检查（支持标准 Authorization: Bearer 头，兼容旧版 x-auth-password）
+  const providedPassword = getAuthToken(request);
   const isAuthenticated = await verifyAuth({
     providedPassword,
     serverPassword: env.PASSWORD,
@@ -105,7 +105,9 @@ export async function onRequest(context) {
     }, 200, corsHeaders);
 
   } catch (err) {
-    console.error('Link API error:', err);
-    return jsonResponse({ error: err.message }, 500, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = crypto.randomUUID();
+    console.error(`Link API error [${requestId}]:`, err);
+    return jsonResponse({ error: '服务暂时不可用', requestId }, 500, corsHeaders);
   }
 }

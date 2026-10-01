@@ -1,5 +1,37 @@
 // 抓取目标网页的 <title> 与 <meta name="description">，用于无 AI 时自动填写书签信息
-import { getCorsHeaders, jsonResponse } from './_kvAdapter.js';
+// [安全] VULN-03：SSRF 防护（仅 HTTPS 公网地址 + 逐跳校验 + 大小限制 + 简单限流），保留匿名访问
+import { getCorsHeaders, jsonResponse, validateExternalUrl, safeFetchWithRedirects } from './_kvAdapter.js';
+
+const MAX_HTML_BYTES = 200000; // 读取上限 200KB（与原有逻辑一致）
+const REQUEST_WINDOW_MS = 60000; // 1 分钟窗口
+const MAX_REQUESTS_PER_WINDOW = 30; // 每窗口每 IP 最多 30 次（含 TOTP 在内的通用限流）
+
+// 进程内简易限流（按客户端 IP）
+const rateBuckets = new Map();
+
+function getClientIp(request) {
+  return (
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || now - bucket.windowStart > REQUEST_WINDOW_MS) {
+    rateBuckets.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+  bucket.count += 1;
+  if (bucket.count > MAX_REQUESTS_PER_WINDOW) {
+    rateBuckets.set(ip, { windowStart: now, count: 1 });
+    return false;
+  }
+  return true;
+}
 
 function decodeEntities(s) {
   if (!s) return '';
@@ -15,7 +47,7 @@ function decodeEntities(s) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -24,41 +56,49 @@ export async function onRequest(context) {
     return jsonResponse({ error: 'Method Not Allowed' }, 405, corsHeaders);
   }
 
+  // [安全] 简单限流，降低被当作端口扫描器的风险
+  if (!checkRateLimit(getClientIp(request))) {
+    return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, corsHeaders);
+  }
+
   const target = new URL(request.url).searchParams.get('url');
   if (!target) {
     return jsonResponse({ error: 'url parameter required' }, 400, corsHeaders);
   }
 
-  let targetUrl;
-  try {
-    targetUrl = new URL(target.startsWith('http') ? target : `https://${target}`);
-  } catch (e) {
-    return jsonResponse({ error: 'invalid url' }, 400, corsHeaders);
+  // [安全] VULN-03：仅允许 HTTPS 公网地址，拦截私有/保留 IP 段
+  const rawUrl = target.startsWith('http') ? target : `https://${target}`;
+  const validated = validateExternalUrl(rawUrl);
+  if (!validated.ok) {
+    return jsonResponse({ error: validated.error || 'invalid url' }, 400, corsHeaders);
   }
 
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(targetUrl.toString(), {
+    // [安全] redirect: manual + 逐跳校验，防止跳转绕过协议/IP 校验
+    const res = await safeFetchWithRedirects(validated.url.toString(), {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml',
       },
-      redirect: 'follow',
       signal: controller.signal,
-    });
+    }, 3);
     clearTimeout(timer);
 
+    if (!res) {
+      return jsonResponse({ error: 'fetch failed' }, 502, corsHeaders);
+    }
     if (!res.ok) {
       return jsonResponse({ error: `fetch failed: ${res.status}` }, 502, corsHeaders);
     }
 
-    // 读取前 200KB，用流式 TextDecoder 正确拼接
+    // 读取前 MAX_HTML_BYTES，用流式 TextDecoder 正确拼接
     const decoder = new TextDecoder('utf-8');
     let html = '';
     let received = 0;
     const reader = res.body.getReader();
-    while (received < 200000) {
+    while (received < MAX_HTML_BYTES) {
       const { done, value } = await reader.read();
       if (done) break;
       html += decoder.decode(value, { stream: true });
@@ -68,7 +108,7 @@ export async function onRequest(context) {
     reader.cancel();
 
     const headEnd = html.toLowerCase().indexOf('</head>');
-    const head = headEnd >= 0 ? html.slice(0, headEnd) : html.slice(0, 200000);
+    const head = headEnd >= 0 ? html.slice(0, headEnd) : html.slice(0, MAX_HTML_BYTES);
 
     // title
     let title = '';
@@ -96,6 +136,7 @@ export async function onRequest(context) {
       'Cache-Control': 'public, max-age=86400',
     });
   } catch (e) {
-    return jsonResponse({ error: 'fetch failed', detail: String(e) }, 502, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    return jsonResponse({ error: 'fetch failed' }, 502, corsHeaders);
   }
 }

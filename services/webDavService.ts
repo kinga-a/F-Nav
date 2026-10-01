@@ -3,11 +3,16 @@ import { Category, LinkItem, WebDavConfig, SearchConfig, AIConfig } from "../typ
 
 // Helper to call our Cloudflare Proxy
 // This solves the CORS issue by delegating the request to the backend
+// [安全] 携带管理员 Token（Authorization: Bearer），服务端要求认证后才允许代理 WebDAV 请求
 const callWebDavProxy = async (operation: 'check' | 'upload' | 'download', config: WebDavConfig, payload?: any) => {
     try {
+        const token = localStorage.getItem('cloudnav_auth_token') || '';
         const response = await fetch('/api/webdav', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify({
                 operation,
                 config,

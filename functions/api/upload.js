@@ -2,11 +2,13 @@
 // 支持将图标上传到 EdgeOne Pages Blob (腾讯云) 或 Cloudflare R2 (S3/Cloudflare)
 // 简洁注释以遵循用户全局规则
 
-import { getKV, getCorsHeaders, verifyAuth, jsonResponse } from './_kvAdapter.js';
+import { getKV, getCorsHeaders, verifyAuth, jsonResponse, getAuthToken, validateExternalUrl, safeFetchWithRedirects } from './_kvAdapter.js';
+
+const MAX_FETCH_BYTES = 5 * 1024 * 1024; // 外部抓取上限 5MB
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -26,7 +28,7 @@ export async function onRequest(context) {
     }
   }
 
-  const providedPassword = request.headers.get('x-auth-password');
+  const providedPassword = getAuthToken(request);
   const isAuthenticated = await verifyAuth({
     providedPassword,
     serverPassword: env.PASSWORD,
@@ -69,8 +71,10 @@ export async function onRequest(context) {
       }
       return jsonResponse({ success: true }, 200, corsHeaders);
     } catch (err) {
-      console.error('Delete error:', err);
-      return jsonResponse({ error: err.message }, 500, corsHeaders);
+      // [安全] VULN-04：不向客户端泄漏内部异常详情
+      const requestId = crypto.randomUUID();
+      console.error(`Delete error [${requestId}]:`, err);
+      return jsonResponse({ error: '服务暂时不可用', requestId }, 500, corsHeaders);
     }
   }
 
@@ -97,18 +101,56 @@ export async function onRequest(context) {
     }
 
     if (fetchUrl) {
+      // [安全] VULN-12：仅允许 HTTPS 公网地址，拦截私有/保留 IP 段，限制响应大小
+      const validated = validateExternalUrl(String(fetchUrl));
+      if (!validated.ok) {
+        return jsonResponse({ error: validated.error || 'Invalid fetch URL' }, 400, corsHeaders);
+      }
       try {
-        const fetchRes = await fetch(fetchUrl, {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        const fetchRes = await safeFetchWithRedirects(validated.url.toString(), {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          }
-        });
+          },
+          signal: controller.signal,
+        }, 2);
+        clearTimeout(timer);
+
+        if (!fetchRes) {
+          return jsonResponse({ error: 'Failed to fetch external URL' }, 400, corsHeaders);
+        }
         if (!fetchRes.ok) {
           return jsonResponse({ error: `Failed to fetch external URL: ${fetchRes.statusText}` }, 400, corsHeaders);
         }
-        arrayBuffer = await fetchRes.arrayBuffer();
+
+        const contentLength = Number(fetchRes.headers.get('content-length') || 0);
+        if (contentLength > MAX_FETCH_BYTES) {
+          return jsonResponse({ error: 'External file too large' }, 413, corsHeaders);
+        }
+
+        const chunks = [];
+        let total = 0;
+        const reader = fetchRes.body.getReader();
+        while (total < MAX_FETCH_BYTES) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          total += value.length;
+        }
+        reader.cancel();
+        if (total >= MAX_FETCH_BYTES) {
+          return jsonResponse({ error: 'External file too large' }, 413, corsHeaders);
+        }
+        const buf = new Uint8Array(total);
+        let offset = 0;
+        for (const c of chunks) {
+          buf.set(c, offset);
+          offset += c.length;
+        }
+        arrayBuffer = buf.buffer;
         contentType = fetchRes.headers.get('content-type') || 'image/png';
-        
+
         const urlObj = new URL(fetchUrl);
         const pathExt = urlObj.pathname.split('.').pop();
         if (pathExt && /^[a-zA-Z0-9]+$/.test(pathExt) && pathExt.length < 5) {
@@ -126,7 +168,9 @@ export async function onRequest(context) {
         }
         filename = `icon.${ext}`;
       } catch (fetchErr) {
-        return jsonResponse({ error: `Fetch URL error: ${fetchErr.message}` }, 400, corsHeaders);
+        const requestId = crypto.randomUUID();
+        console.error(`Fetch URL error [${requestId}]:`, fetchErr);
+        return jsonResponse({ error: 'Fetch URL error' }, 400, corsHeaders);
       }
     } else {
       arrayBuffer = await file.arrayBuffer();
@@ -134,7 +178,7 @@ export async function onRequest(context) {
       contentType = file.type || 'image/png';
       ext = filename.split('.').pop() || 'png';
     }
-    
+
     // 生成唯一 Key 并按分类存放
     const randomId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 10);
     const key = `${categoryName}/${randomId}.${ext}`;
@@ -175,7 +219,9 @@ export async function onRequest(context) {
     return jsonResponse({ success: true, url: iconUrl }, 200, corsHeaders);
 
   } catch (err) {
-    console.error('Upload error:', err);
-    return jsonResponse({ error: err.message }, 500, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = crypto.randomUUID();
+    console.error(`Upload error [${requestId}]:`, err);
+    return jsonResponse({ error: '服务暂时不可用', requestId }, 500, corsHeaders);
   }
 }

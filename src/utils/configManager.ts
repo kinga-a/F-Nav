@@ -248,7 +248,7 @@ class ConfigManager {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-auth-password': authToken,
+              'Authorization': `Bearer ${authToken}`,
             },
             body: JSON.stringify({ saveConfig: key, config }),
           });
@@ -270,7 +270,7 @@ class ConfigManager {
     try {
       const response = await fetch(`/api/storage?key=${STORAGE_KEYS.CONFIG_KEY}`, {
         headers: {
-          'x-auth-password': authToken,
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 

@@ -45,19 +45,26 @@ function detectMimeType(arrayBuffer) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
   const url = new URL(request.url);
 
-  // 防盗链保护 (防站外盗用)
+  // 防盗链保护 (防站外盗用)：白名单模式，仅允许同源 Referer；
+  // 无 Referer 的请求（隐私浏览器 / curl）兼容放行，但带 Sec-Fetch-Site: cross-site 的浏览器请求一律拦截，
+  // 修复 VULN-11 中"无 Referer 即绕过"的漏洞
   const referer = request.headers.get('referer');
+  const secFetchSite = request.headers.get('sec-fetch-site');
   if (referer) {
     try {
       const refererHost = new URL(referer).hostname;
       const requestHost = url.hostname;
       if (refererHost !== requestHost && refererHost !== 'localhost' && refererHost !== '127.0.0.1') {
-        return new Response('Forbidden: Hotlinking is not allowed', { status: 403 });
+        return new Response('Forbidden: Hotlinking is not allowed', { status: 403, headers: corsHeaders });
       }
-    } catch (e) {}
+    } catch (e) {
+      return new Response('Forbidden: Hotlinking is not allowed', { status: 403, headers: corsHeaders });
+    }
+  } else if (secFetchSite === 'cross-site') {
+    return new Response('Forbidden: Hotlinking is not allowed', { status: 403, headers: corsHeaders });
   }
 
   if (request.method === 'OPTIONS') {

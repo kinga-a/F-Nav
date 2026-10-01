@@ -128,7 +128,7 @@ export function LinksProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-auth-password': authToken,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify(pending),
       })

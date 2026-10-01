@@ -59,7 +59,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
           headers: {
-            'x-auth-password': authToken
+            'Authorization': `Bearer ${authToken}`
           },
           body: formData
         });

@@ -1,12 +1,67 @@
 // 认证接口
 // 支持 EdgeOne Pages / Cloudflare Workers
 // 含 TOTP 两步验证（RFC 6238）
+// [安全] VULN-06/07/08/09：恢复码轮换、登录限速、恒定时间比较、标准 Authorization 头
 
-import { getKV, getCorsHeaders, jsonResponse, verifyAuth } from './_kvAdapter.js';
+import { getKV, getCorsHeaders, jsonResponse, verifyAuth, getAuthToken, timingSafeEqual } from './_kvAdapter.js';
+
+// ==================== 登录限速（进程内） ====================
+const MAX_ATTEMPTS = 5; // 连续失败 5 次后触发退避
+const MAX_BACKOFF_MS = 300000; // 退避上限 5 分钟
+const loginAttempts = new Map(); // ip -> { count, totpFails, lockedUntil }
+
+function getClientIp(request) {
+  return (
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+function isLocked(ip) {
+  const rec = loginAttempts.get(ip);
+  if (!rec) return false;
+  if (rec.lockedUntil && Date.now() < rec.lockedUntil) return true;
+  if (rec.lockedUntil && Date.now() >= rec.lockedUntil) {
+    // 锁定期已过，重置计数
+    loginAttempts.delete(ip);
+    return false;
+  }
+  return false;
+}
+
+function lockRemainingMs(ip) {
+  const rec = loginAttempts.get(ip);
+  if (!rec?.lockedUntil) return 0;
+  return Math.max(0, rec.lockedUntil - Date.now());
+}
+
+function recordFailure(ip, type) {
+  const now = Date.now();
+  const rec = loginAttempts.get(ip) || { count: 0, totpFails: 0, lockedUntil: 0 };
+  if (type === 'totp') rec.totpFails += 1;
+  else rec.count += 1;
+  const fails = rec.count + rec.totpFails;
+  if (fails >= MAX_ATTEMPTS) {
+    const backoff = Math.min(Math.pow(2, fails - MAX_ATTEMPTS) * 1000, MAX_BACKOFF_MS);
+    rec.lockedUntil = now + backoff;
+    rec.count = 0;
+    rec.totpFails = 0;
+  } else {
+    rec.lockedUntil = 0;
+  }
+  loginAttempts.set(ip, rec);
+}
+
+function resetAttempts(ip) {
+  loginAttempts.delete(ip);
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const corsHeaders = getCorsHeaders(env);
+  const corsHeaders = getCorsHeaders(env, request);
+  const clientIp = getClientIp(request);
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -22,7 +77,7 @@ export async function onRequest(context) {
 
     // ==================== TOTP 管理操作（需要有效 Token） ====================
     if (body.action === 'totp-setup' || body.action === 'totp-activate' || body.action === 'totp-disable') {
-      const token = request.headers.get('x-auth-password');
+      const token = getAuthToken(request);
       const isAdmin = await verifyAuth({ providedPassword: token, serverPassword: env.PASSWORD, kv });
       if (!isAdmin) {
         return jsonResponse({ error: '请先登录' }, 401, corsHeaders);
@@ -62,31 +117,49 @@ export async function onRequest(context) {
     }
 
     // ==================== 普通登录 ====================
+
+    // [安全] VULN-07：锁定期内直接拒绝
+    if (isLocked(clientIp)) {
+      const retryAfter = Math.ceil(lockRemainingMs(clientIp) / 1000);
+      return jsonResponse({ error: '尝试次数过多，请稍后再试' }, 429, {
+        ...corsHeaders,
+        'Retry-After': String(retryAfter),
+      });
+    }
+
     const { password, totp } = body;
 
     if (!env.PASSWORD) {
       return jsonResponse({ error: '服务器未配置管理员密码' }, 500, corsHeaders);
     }
 
-    if (password !== env.PASSWORD) {
+    // [安全] VULN-08：恒定时间比较，避免时序侧信道
+    if (typeof password !== 'string' || !timingSafeEqual(password, env.PASSWORD)) {
+      recordFailure(clientIp, 'password');
       return jsonResponse({ error: '密码错误' }, 401, corsHeaders);
     }
 
     // 两步验证：若已启用 TOTP，必须校验动态码或恢复码
     const totpSecret = await kv.get('totp_secret');
+    let rotatedRecovery = null;
     if (totpSecret) {
       const code = String(totp || '').trim();
       const recovery = await kv.get('totp_recovery');
-      if (recovery && code.toLowerCase() === recovery.toLowerCase()) {
-        // 恢复码登录：一次性有效，自动关闭两步验证
-        await kv.delete('totp_secret');
-        await kv.delete('totp_recovery');
-      } else if (await verifyTotp(totpSecret, code)) {
+      // [安全] VULN-06：恢复码一次性消费并轮换，TOTP 保持启用（不再永久关闭两步验证）
+      if (recovery && code && timingSafeEqual(code.toLowerCase(), recovery.toLowerCase())) {
+        const newRecovery = generateRecoveryCode();
+        await kv.put('totp_recovery', newRecovery);
+        rotatedRecovery = newRecovery;
+      } else if (code && await verifyTotp(totpSecret, code)) {
         // 动态码正确
       } else {
+        recordFailure(clientIp, 'totp');
         return jsonResponse({ error: '动态验证码错误或已过期' }, 401, corsHeaders);
       }
     }
+
+    // 登录成功：重置限速计数
+    resetAttempts(clientIp);
 
     // 清理旧 Token：读取上次生成的 token 并删除
     try {
@@ -129,12 +202,16 @@ export async function onRequest(context) {
     return jsonResponse({
       success: true,
       token,
+      // [安全] VULN-06：使用恢复码登录时返回轮换后的新恢复码，提示用户妥善保存
+      ...(rotatedRecovery ? { recovery: rotatedRecovery, recoveryRotated: true } : {}),
       message: '认证成功',
     }, 200, corsHeaders);
 
   } catch (err) {
-    console.error('Auth API error:', err);
-    return jsonResponse({ error: '认证请求失败' }, 500, corsHeaders);
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = crypto.randomUUID();
+    console.error(`Auth API error [${requestId}]:`, err);
+    return jsonResponse({ error: '认证请求失败', requestId }, 500, corsHeaders);
   }
 }
 

@@ -129,7 +129,7 @@ const BackupModal: React.FC<BackupModalProps> = ({
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
           headers: {
-            'x-auth-password': authToken
+            'Authorization': `Bearer ${authToken}`
           },
           body: formData
         });

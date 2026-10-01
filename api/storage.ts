@@ -1,6 +1,7 @@
 // Vercel 存储接口
+// [安全] VULN-01：?key= 直接读取需认证 + key 白名单 + 敏感 key 拒绝；分类密码恒脱敏；错误信息脱敏
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getKV, getCorsHeaders, verifyAuth } from './_kvHelper.js';
+import { getKV, getCorsHeaders, verifyAuth, getAuthToken, jsonResponse } from './_kvHelper.js';
 
 const CONFIG_SECTIONS = ['ai', 'website', 'mastodon', 'weather', 'search', 'icon', 'view', 'ui'];
 
@@ -9,6 +10,20 @@ const STORAGE_KEYS = {
   CATEGORIES_CONFIG_KEY: 'cate_config',
   LINKS_CONFIG_KEY: 'links_config',
 };
+
+// 敏感 key：任何读取/写入路径都必须显式拒绝
+const DENIED_KEYS = ['auth_token', 'last_token', 'totp_secret', 'totp_recovery', 'totp_pending'];
+
+// 允许通过 ?key= 直接读取的 KV key 前缀白名单
+const ALLOWED_KEY_PREFIXES = ['config', 'cate_config', 'links:', 'favicon:'];
+
+function isDeniedKey(key: string): boolean {
+  return DENIED_KEYS.some(k => key === k || key.startsWith(`${k}:`));
+}
+
+function isAllowedKey(key: string): boolean {
+  return ALLOWED_KEY_PREFIXES.some(p => key.startsWith(p));
+}
 
 async function readConfigSection(kv: any, section: string) {
   const sectionStr = await kv.get(`config:${section}`);
@@ -94,18 +109,23 @@ async function saveCategoryLinks(kv: any, links: any[]) {
   );
 
   await Promise.all(writes);
-  
+
   // 写入后清除旧版全量存储（可选，为了安全起见这里暂时不删，或者只写一个标记）
 }
 
+// 分类数据脱敏：永远不向客户端返回分类密码
+function sanitizeCategories(categories: any[]) {
+  return categories.map(({ password, ...rest }: any) => ({
+    ...rest,
+    hasPassword: !!(password && String(password).trim() !== ''),
+  }));
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const corsHeaders = getCorsHeaders();
-  res.setHeader('Access-Control-Allow-Origin', corsHeaders['Access-Control-Allow-Origin']);
-  res.setHeader('Access-Control-Allow-Methods', corsHeaders['Access-Control-Allow-Methods']);
-  res.setHeader('Access-Control-Allow-Headers', corsHeaders['Access-Control-Allow-Headers']);
+  const corsHeaders = getCorsHeaders(req);
 
   if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+    return res.status(204).setHeader('Access-Control-Allow-Origin', corsHeaders['Access-Control-Allow-Origin'] || '').end();
   }
 
   try {
@@ -117,21 +137,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (checkAuth === 'true') {
         // 增强：若请求携带 Token，顺带验证其有效性（被其他设备登录踢下线时前端可自动登出）
-        const providedToken = req.headers['x-auth-password'] as string | undefined;
+        const providedToken = getAuthToken(req) || undefined;
         let tokenValid: boolean | null = null;
         if (providedToken) {
           tokenValid = await verifyAuth(providedToken);
         }
         // 是否已开启 TOTP 两步验证（登录弹窗据此显示动态码输入框）
         const totpEnabled = !!(await kv.get('totp_secret'));
-        return res.status(200).json({
+        return jsonResponse(res, 200, {
           hasPassword: !!process.env.PASSWORD,
           requiresAuth: !!process.env.PASSWORD,
           readOnlyAccess: true,
           capabilities: { upload: false },
           tokenValid,
           totpEnabled,
-        });
+        }, corsHeaders);
       }
 
       if (CONFIG_SECTIONS.includes(getConfig as string)) {
@@ -139,58 +159,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const defaults: Record<string, any> = {
           website: { passwordExpiry: { value: 1, unit: 'week' } },
         };
-        return res.status(200).json(sectionVal || defaults[getConfig as string] || {});
+        return jsonResponse(res, 200, sectionVal || defaults[getConfig as string] || {}, corsHeaders);
       }
 
       if (getConfig === 'favicon') {
         const domain = req.query.domain as string;
-        if (!domain) return res.status(400).json({ error: 'Domain required' });
+        if (!domain) return jsonResponse(res, 400, { error: 'Domain required' }, corsHeaders);
         const cachedIcon = await kv.get(`favicon:${domain}`);
-        return res.status(200).json({ icon: cachedIcon || null, cached: !!cachedIcon });
+        return jsonResponse(res, 200, { icon: cachedIcon || null, cached: !!cachedIcon }, corsHeaders);
       }
 
       if (getConfig === 'categories') {
         const data = await kv.get(STORAGE_KEYS.CATEGORIES_CONFIG_KEY);
         const categories = data ? (typeof data === 'string' ? JSON.parse(data) : data) : [];
-        const sanitized = categories.map(({ password, ...rest }: any) => rest);
-        return res.status(200).json(sanitized);
+        // [安全] 恒脱敏：不再存在 readOnly=false 时泄漏分类密码的路径
+        return jsonResponse(res, 200, sanitizeCategories(categories), corsHeaders);
       }
 
       if (getConfig === 'links') {
         const categoryId = req.query.category as string;
         if (categoryId) {
           const data = await kv.get(categoryLinksKey(categoryId));
-          return res.status(200).json(data ? (typeof data === 'string' ? JSON.parse(data) : data) : []);
+          return jsonResponse(res, 200, data ? (typeof data === 'string' ? JSON.parse(data) : data) : [], corsHeaders);
         }
         const links = await readAllCategoryLinks(kv);
-        return res.status(200).json(links);
+        return jsonResponse(res, 200, links, corsHeaders);
       }
 
+      // [安全] VULN-01：?key= 直接读取任意 KV key —— 必须认证，且仅允许白名单内的非敏感 key
       if (key) {
+        const providedPassword = getAuthToken(req) || '';
+        const isAdmin = await verifyAuth(providedPassword);
+        if (!isAdmin) {
+          return jsonResponse(res, 401, { error: '需要密码验证' }, corsHeaders);
+        }
+        if (isDeniedKey(key as string)) {
+          return jsonResponse(res, 403, { error: 'Forbidden' }, corsHeaders);
+        }
+        if (!isAllowedKey(key as string)) {
+          return jsonResponse(res, 400, { error: 'Invalid key' }, corsHeaders);
+        }
         if (key === STORAGE_KEYS.CONFIG_KEY) {
           const merged = await mergeAllConfigSections(kv);
-          return res.status(200).json({ key, value: JSON.stringify(merged) });
+          return jsonResponse(res, 200, { key, value: JSON.stringify(merged) }, corsHeaders);
         }
         const value = await kv.get(key as string);
-        return res.status(200).json({ key, value });
+        return jsonResponse(res, 200, { key, value }, corsHeaders);
       }
 
       if (getConfig === 'true') {
         const categoriesData = await kv.get(STORAGE_KEYS.CATEGORIES_CONFIG_KEY);
         const categories = categoriesData ? (typeof categoriesData === 'string' ? JSON.parse(categoriesData) : categoriesData) : [];
-        const sanitizedCategories = readOnly
-          ? categories.map(({ password, ...rest }: any) => rest)
-          : categories;
-        
+        // [安全] 恒脱敏：分类密码绝不返回客户端
+        const sanitizedCategories = sanitizeCategories(categories);
+
         const links = await readAllCategoryLinks(kv);
 
-        return res.status(200).json({
+        return jsonResponse(res, 200, {
           links,
           categories: sanitizedCategories,
-        });
+        }, corsHeaders);
       }
 
-      return res.status(200).json({ links: [], categories: [] });
+      return jsonResponse(res, 200, { links: [], categories: [] }, corsHeaders);
     }
 
     // ==================== POST ====================
@@ -199,31 +230,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (body.saveConfig === 'favicon') {
         const { domain, icon } = body;
-        if (!domain || !icon) return res.status(400).json({ error: 'Domain and icon required' });
+        if (!domain || !icon) return jsonResponse(res, 400, { error: 'Domain and icon required' }, corsHeaders);
         await kv.set(`favicon:${domain}`, icon, { ex: 30 * 24 * 60 * 60 });
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
-      const providedPassword = req.headers['x-auth-password'] as string;
+      const providedPassword = getAuthToken(req) || '';
       const isAuthenticated = await verifyAuth(providedPassword);
 
       if (!isAuthenticated) {
-        return res.status(401).json({ error: '管理操作需要密码验证' });
+        return jsonResponse(res, 401, { error: '管理操作需要密码验证' }, corsHeaders);
+      }
+
+      // [安全] 写入路径同样拒绝敏感 key
+      if (body.key && isDeniedKey(body.key)) {
+        return jsonResponse(res, 403, { error: 'Forbidden' }, corsHeaders);
       }
 
       if (body.authOnly) {
         await kv.set('last_auth_time', Date.now().toString());
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
       if (CONFIG_SECTIONS.includes(body.saveConfig)) {
         await kv.set(`config:${body.saveConfig}`, JSON.stringify(body.config));
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
       if (body.saveConfig === 'categories') {
         await kv.set(STORAGE_KEYS.CATEGORIES_CONFIG_KEY, JSON.stringify(body.categories));
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
       if (body.saveConfig === 'links') {
@@ -232,34 +268,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else {
           await saveCategoryLinks(kv, body.links);
         }
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
       if (body.key === STORAGE_KEYS.CONFIG_KEY && body.value) {
         await kv.set('config', body.value);
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
       if (body.links && body.categories) {
         await saveCategoryLinks(kv, body.links);
         await kv.set(STORAGE_KEYS.CATEGORIES_CONFIG_KEY, JSON.stringify(body.categories));
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       } else if (body.links) {
         await saveCategoryLinks(kv, body.links);
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       } else if (body.categories) {
         await kv.set(STORAGE_KEYS.CATEGORIES_CONFIG_KEY, JSON.stringify(body.categories));
-        return res.status(200).json({ success: true });
+        return jsonResponse(res, 200, { success: true }, corsHeaders);
       }
 
-      return res.status(400).json({ error: 'Invalid data format' });
+      return jsonResponse(res, 400, { error: 'Invalid data format' }, corsHeaders);
     }
 
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return jsonResponse(res, 405, { error: 'Method Not Allowed' }, corsHeaders);
 
   } catch (err: any) {
-    console.error('Storage API error:', err);
-    return res.status(500).json({ error: 'Failed to fetch data', details: err.message });
+    // [安全] VULN-04：不向客户端泄漏内部异常详情
+    const requestId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    console.error(`Storage API error [${requestId}]:`, err);
+    return jsonResponse(res, 500, { error: '服务暂时不可用', requestId }, corsHeaders);
   }
 }
-

@@ -56,7 +56,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-          'x-auth-password': authToken
+          'Authorization': `Bearer ${authToken}`
         },
         body: formData
       });
@@ -111,7 +111,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
       const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-          'x-auth-password': authToken
+          'Authorization': `Bearer ${authToken}`
         },
         body: formData
       });
@@ -321,7 +321,7 @@ const LinkModal: React.FC<LinkModalProps> = ({ isOpen, onClose, onSave, onDelete
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-auth-password': authToken
+            'Authorization': `Bearer ${authToken}`
           },
           body: JSON.stringify({
             saveConfig: 'favicon',
