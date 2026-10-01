@@ -165,7 +165,7 @@ functions/api/ 是 EdgeOne 的边缘函数，必须随本次一起部署，否�
 - **安全响应头**：静态资源（`public/_headers`、`vercel.json`）与 API 统一响应均启用 CSP、HSTS、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy`、`Permissions-Policy` 六项。
 - **CORS 白名单**：默认仅同源放行，跨源需在 `ALLOWED_ORIGIN` 中精确声明（无 `*` 兜底），防止其他站点浏览器端偷偷读取 API。
 
-> ⚠️ **部署提醒**：EdgeOne Pages 与 Vercel 部署后，如需跨源访问请设置 `ALLOWED_ORIGIN=https://<你的域名>`（值必须带协议，多个域名用逗号分隔，如 `https://sq.y11.fun, https://another.example.com`）。若曾泄漏过管理密码或 AI Key，请立即吊销/修改并重新登录。
+> ⚠️ **部署提醒**：EdgeOne Pages 与 Vercel 部署后，如需跨源访问请设置 `ALLOWED_ORIGIN=https://<你的域名>`（值必须带协议，多个域名用逗号分隔，如 `https://s.a.com, https://another.example.com`）。若曾泄漏过管理密码或 AI Key，请立即吊销/修改并重新登录。
 
 ## 🛠️ 本地开发
 
