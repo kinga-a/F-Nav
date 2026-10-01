@@ -130,6 +130,7 @@ export function jsonResponse(data, status = 200, extraHeaders = {}) {
     status,
     headers: {
       'Content-Type': 'application/json',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'strict-origin-when-cross-origin',

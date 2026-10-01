@@ -110,6 +110,7 @@ export async function verifyAuth(providedPassword: string): Promise<boolean> {
  */
 export function jsonResponse(res: VercelResponse, status: number, data: unknown, corsHeaders: Record<string, string>) {
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
